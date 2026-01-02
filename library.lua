@@ -1,4 +1,4 @@
---// BLOCK UI LIBRARY | SATURATED | CLEAN API | EXPANDABLE
+--// BLOCK UI LIBRARY | DARK GRAY | CLEAN | EXPANDABLE
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -7,7 +7,6 @@ local Players = game:GetService("Players")
 local Library = {}
 local CORNER = UDim.new(0,5)
 
--- destroy previous hub
 pcall(function()
     local pg = Players.LocalPlayer:WaitForChild("PlayerGui")
     if pg:FindFirstChild("MaskHub") then
@@ -15,7 +14,6 @@ pcall(function()
     end
 end)
 
--- helpers
 local function Corner(x)
     local c = Instance.new("UICorner")
     c.CornerRadius = CORNER
@@ -23,41 +21,48 @@ local function Corner(x)
 end
 
 local function Drag(Handle, Frame)
-    local dragging, start, pos
-    Handle.InputBegan:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.MouseButton1 then
+    local dragging = false
+    local dragStart, startPos
+
+    local function update(input)
+        local delta = input.Position - dragStart
+        Frame.Position = UDim2.fromOffset(startPos.X.Offset + delta.X, startPos.Y.Offset + delta.Y)
+    end
+
+    Handle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
-            start = i.Position
-            pos = Frame.Position
+            dragStart = input.Position
+            startPos = Frame.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
         end
     end)
-    UserInputService.InputEnded:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(i)
-        if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
-            local d = i.Position - start
-            Frame.Position = UDim2.fromOffset(pos.X.Offset + d.X, pos.Y.Offset + d.Y)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            update(input)
         end
     end)
 end
 
--- notifications
 local function Notify(Gui, Title, Text)
     local Frame = Instance.new("Frame")
     Frame.Size = UDim2.fromOffset(280, 90)
     Frame.Position = UDim2.new(1, -20, 1, -20)
     Frame.AnchorPoint = Vector2.new(1,1)
-    Frame.BackgroundColor3 = Color3.fromRGB(140, 45, 35)
+    Frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     Frame.BorderSizePixel = 0
     Frame.BackgroundTransparency = 1
     Frame.Parent = Gui
     Corner(Frame)
 
     local Stroke = Instance.new("UIStroke")
-    Stroke.Color = Color3.fromRGB(200, 70, 55)
+    Stroke.Color = Color3.fromRGB(80, 80, 80)
     Stroke.Parent = Frame
 
     local T = Instance.new("TextLabel")
@@ -77,7 +82,7 @@ local function Notify(Gui, Title, Text)
     D.Font = Enum.Font.Gotham
     D.TextSize = 14
     D.TextWrapped = true
-    D.TextColor3 = Color3.fromRGB(255,220,215)
+    D.TextColor3 = Color3.fromRGB(220,220,220)
     D.Parent = Frame
 
     TweenService:Create(Frame, TweenInfo.new(0.25), {BackgroundTransparency = 0}):Play()
@@ -89,10 +94,6 @@ local function Notify(Gui, Title, Text)
     end)
 end
 
----------------------------------------------------------------------
--- WINDOW CREATION
----------------------------------------------------------------------
-
 function Library:CreateWindow(Title)
     local Gui = Instance.new("ScreenGui")
     Gui.Name = "MaskHub"
@@ -103,19 +104,19 @@ function Library:CreateWindow(Title)
     Main.Size = UDim2.fromOffset(500, 320)
     Main.Position = UDim2.fromScale(0.5,0.5)
     Main.AnchorPoint = Vector2.new(0.5,0.5)
-    Main.BackgroundColor3 = Color3.fromRGB(110, 35, 30)
+    Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     Main.BorderSizePixel = 0
     Main.Parent = Gui
     Corner(Main)
 
     local Stroke = Instance.new("UIStroke")
-    Stroke.Color = Color3.fromRGB(190, 60, 50)
+    Stroke.Color = Color3.fromRGB(80, 80, 80)
     Stroke.Thickness = 1
     Stroke.Parent = Main
 
     local Top = Instance.new("Frame")
     Top.Size = UDim2.fromOffset(500, 38)
-    Top.BackgroundColor3 = Color3.fromRGB(150, 45, 40)
+    Top.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
     Top.BorderSizePixel = 0
     Top.Parent = Main
     Corner(Top)
@@ -138,7 +139,7 @@ function Library:CreateWindow(Title)
     Min.Font = Enum.Font.GothamBold
     Min.TextSize = 18
     Min.TextColor3 = Color3.fromRGB(255,255,255)
-    Min.BackgroundColor3 = Color3.fromRGB(180, 60, 50)
+    Min.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     Min.BorderSizePixel = 0
     Min.Parent = Top
     Corner(Min)
@@ -150,7 +151,7 @@ function Library:CreateWindow(Title)
     Close.Font = Enum.Font.GothamBold
     Close.TextSize = 14
     Close.TextColor3 = Color3.fromRGB(255,255,255)
-    Close.BackgroundColor3 = Color3.fromRGB(200, 65, 55)
+    Close.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     Close.BorderSizePixel = 0
     Close.Parent = Top
     Corner(Close)
@@ -171,41 +172,42 @@ function Library:CreateWindow(Title)
 
     Drag(Top, Main)
 
-    -- tabs
     local Tabs = Instance.new("Frame")
     Tabs.Position = UDim2.fromOffset(8,46)
     Tabs.Size = UDim2.fromOffset(115,260)
-    Tabs.BackgroundColor3 = Color3.fromRGB(140, 45, 40)
+    Tabs.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     Tabs.BorderSizePixel = 0
     Tabs.Parent = Main
     Corner(Tabs)
 
+    local TabPad = Instance.new("UIPadding")
+    TabPad.PaddingTop = UDim.new(0,8)
+    TabPad.PaddingLeft = UDim.new(0,8)
+    TabPad.PaddingRight = UDim.new(0,8)
+    TabPad.Parent = Tabs
+
     local TabList = Instance.new("UIListLayout", Tabs)
     TabList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    TabList.Padding = UDim.new(0,6)
+    TabList.Padding = UDim.new(0,8)
 
-    -- pages
     local Pages = Instance.new("Frame")
     Pages.Position = UDim2.fromOffset(130,46)
     Pages.Size = UDim2.fromOffset(360,260)
-    Pages.BackgroundColor3 = Color3.fromRGB(90, 30, 26)
+    Pages.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     Pages.BorderSizePixel = 0
     Pages.Parent = Main
     Corner(Pages)
 
     local Window = {}
 
-    ---------------------------------------------------------------------
-    -- TAB CREATION
-    ---------------------------------------------------------------------
     function Window:CreateTab(Name)
         local Btn = Instance.new("TextButton")
         Btn.Size = UDim2.fromOffset(100,34)
         Btn.Text = Name
         Btn.Font = Enum.Font.Gotham
         Btn.TextSize = 14
-        Btn.TextColor3 = Color3.fromRGB(255,235,230)
-        Btn.BackgroundColor3 = Color3.fromRGB(170, 55, 48)
+        Btn.TextColor3 = Color3.fromRGB(230,230,230)
+        Btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
         Btn.BorderSizePixel = 0
         Btn.Parent = Tabs
         Corner(Btn)
@@ -216,9 +218,14 @@ function Library:CreateWindow(Title)
         Page.Visible = false
         Page.Parent = Pages
 
+        local Pad = Instance.new("UIPadding")
+        Pad.PaddingTop = UDim.new(0,12)
+        Pad.PaddingLeft = UDim.new(0,12)
+        Pad.Parent = Page
+
         local Layout = Instance.new("UIListLayout", Page)
         Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-        Layout.Padding = UDim.new(0,10)
+        Layout.Padding = UDim.new(0,12)
 
         Btn.MouseButton1Click:Connect(function()
             for _,v in pairs(Pages:GetChildren()) do
@@ -229,17 +236,14 @@ function Library:CreateWindow(Title)
 
         local Tab = {}
 
-        ---------------------------------------------------------------------
-        -- BUTTON ELEMENT
-        ---------------------------------------------------------------------
         function Tab:CreateButton(Text, Callback)
             local B = Instance.new("TextButton")
             B.Size = UDim2.fromOffset(320,34)
             B.Text = Text
             B.Font = Enum.Font.Gotham
             B.TextSize = 14
-            B.TextColor3 = Color3.fromRGB(255,255,255)
-            B.BackgroundColor3 = Color3.fromRGB(180, 60, 52)
+            B.TextColor3 = Color3.fromRGB(240,240,240)
+            B.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
             B.BorderSizePixel = 0
             B.Parent = Page
             Corner(B)
@@ -253,7 +257,6 @@ function Library:CreateWindow(Title)
             end)
         end
 
-        -- auto-select first tab
         if #Pages:GetChildren() == 1 then
             Page.Visible = true
         end
