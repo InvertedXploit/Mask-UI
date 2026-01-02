@@ -1,4 +1,6 @@
--- MASK UI LIBRARY | DARK GRAY | ROUNDED | FULL
+-------------------------
+-- MASK UI LIBRARY PART 1
+-------------------------
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -29,7 +31,12 @@ local function Drag(Handle, Frame)
 
     local function update(input)
         local delta = input.Position - dragStart
-        Frame.Position = UDim2.fromOffset(startPos.X.Offset + delta.X, startPos.Y.Offset + delta.Y)
+        Frame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
     end
 
     Handle.InputBegan:Connect(function(input)
@@ -121,7 +128,8 @@ function Library:CreateWindow(Title)
     Stroke.Parent = Main
 
     local Top = Instance.new("Frame")
-    Top.Size = UDim2.fromOffset(500, 40)
+    Top.Size = UDim2.new(1,0,0,40)
+    Top.Position = UDim2.new(0,0,0,0)
     Top.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
     Top.BorderSizePixel = 0
     Top.Parent = Main
@@ -184,27 +192,34 @@ function Library:CreateWindow(Title)
         end
     end)
 
+    -- Tabs bar at top, under Top
     local Tabs = Instance.new("Frame")
-    Tabs.Position = UDim2.fromOffset(8,48)
-    Tabs.Size = UDim2.fromOffset(115,284)
-    Tabs.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    Tabs.Position = UDim2.new(0,0,0,40)
+    Tabs.Size = UDim2.new(1,0,0,32)
+    Tabs.BackgroundColor3 = Color3.fromRGB(30,30,30)
     Tabs.BorderSizePixel = 0
     Tabs.Parent = Main
-    Corner(Tabs)
+
+    local TabsCorner = Instance.new("UICorner")
+    TabsCorner.CornerRadius = UDim.new(0,0)
+    TabsCorner.Parent = Tabs
 
     local TabPad = Instance.new("UIPadding")
-    TabPad.PaddingTop = UDim.new(0,8)
     TabPad.PaddingLeft = UDim.new(0,8)
     TabPad.PaddingRight = UDim.new(0,8)
+    TabPad.PaddingTop = UDim.new(0,4)
     TabPad.Parent = Tabs
 
     local TabList = Instance.new("UIListLayout", Tabs)
-    TabList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    TabList.FillDirection = Enum.FillDirection.Horizontal
+    TabList.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    TabList.VerticalAlignment = Enum.VerticalAlignment.Center
     TabList.Padding = UDim.new(0,8)
 
+    -- Pages fill remaining area
     local Pages = Instance.new("Frame")
-    Pages.Position = UDim2.fromOffset(130,48)
-    Pages.Size = UDim2.fromOffset(360,284)
+    Pages.Position = UDim2.new(0,0,0,72)
+    Pages.Size = UDim2.new(1,0,1,-72)
     Pages.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     Pages.BorderSizePixel = 0
     Pages.Parent = Main
@@ -214,13 +229,14 @@ function Library:CreateWindow(Title)
 
     function Window:CreateTab(Name)
         local Btn = Instance.new("TextButton")
-        Btn.Size = UDim2.fromOffset(100,34)
+        Btn.Size = UDim2.new(0,100,1,-8)
         Btn.Text = Name
         Btn.Font = Enum.Font.Gotham
         Btn.TextSize = 14
         Btn.TextColor3 = Color3.fromRGB(230,230,230)
-        Btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+        Btn.BackgroundColor3 = Color3.fromRGB(45,45,45)
         Btn.BorderSizePixel = 0
+        Btn.AutoButtonColor = true
         Btn.Parent = Tabs
         Corner(Btn)
 
@@ -284,7 +300,6 @@ function Library:CreateWindow(Title)
                 end
             end)
         end
-
         function Tab:CreateToggle(Text, Default, Callback)
             local T = Instance.new("TextButton")
             T.Size = UDim2.fromOffset(320,34)
