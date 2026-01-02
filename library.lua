@@ -1,11 +1,9 @@
---// BLOCK UI LIBRARY | DARK GRAY | CLEAN | EXPANDABLE
-
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 
 local Library = {}
-local CORNER = UDim.new(0,5)
+local CORNER = UDim.new(0,12)
 
 pcall(function()
     local pg = Players.LocalPlayer:WaitForChild("PlayerGui")
@@ -72,17 +70,20 @@ local function Notify(Gui, Title, Text)
     T.Font = Enum.Font.GothamBold
     T.TextSize = 16
     T.TextColor3 = Color3.fromRGB(255,255,255)
+    T.TextXAlignment = Enum.TextXAlignment.Left
+    T.Position = UDim2.fromOffset(10,0)
     T.Parent = Frame
 
     local D = Instance.new("TextLabel")
-    D.Position = UDim2.fromScale(0,0.4)
-    D.Size = UDim2.fromScale(1,0.6)
+    D.Position = UDim2.fromOffset(10,36)
+    D.Size = UDim2.fromScale(1,-36)
     D.BackgroundTransparency = 1
     D.Text = Text
     D.Font = Enum.Font.Gotham
     D.TextSize = 14
     D.TextWrapped = true
     D.TextColor3 = Color3.fromRGB(220,220,220)
+    D.TextXAlignment = Enum.TextXAlignment.Left
     D.Parent = Frame
 
     TweenService:Create(Frame, TweenInfo.new(0.25), {BackgroundTransparency = 0}):Play()
@@ -101,7 +102,7 @@ function Library:CreateWindow(Title)
     Gui.Parent = Players.LocalPlayer.PlayerGui
 
     local Main = Instance.new("Frame")
-    Main.Size = UDim2.fromOffset(500, 320)
+    Main.Size = UDim2.fromOffset(500, 340)
     Main.Position = UDim2.fromScale(0.5,0.5)
     Main.AnchorPoint = Vector2.new(0.5,0.5)
     Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
@@ -115,7 +116,7 @@ function Library:CreateWindow(Title)
     Stroke.Parent = Main
 
     local Top = Instance.new("Frame")
-    Top.Size = UDim2.fromOffset(500, 38)
+    Top.Size = UDim2.fromOffset(500, 40)
     Top.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
     Top.BorderSizePixel = 0
     Top.Parent = Main
@@ -133,28 +134,26 @@ function Library:CreateWindow(Title)
     TitleLabel.Parent = Top
 
     local Min = Instance.new("TextButton")
-    Min.Size = UDim2.fromOffset(28,28)
-    Min.Position = UDim2.new(1,-64,0.5,-14)
+    Min.Size = UDim2.fromOffset(24,24)
+    Min.Position = UDim2.new(1,-60,0.5,-12)
     Min.Text = "–"
     Min.Font = Enum.Font.GothamBold
-    Min.TextSize = 18
-    Min.TextColor3 = Color3.fromRGB(255,255,255)
-    Min.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    Min.TextSize = 20
+    Min.TextColor3 = Color3.fromRGB(200,200,200)
+    Min.BackgroundTransparency = 1
     Min.BorderSizePixel = 0
     Min.Parent = Top
-    Corner(Min)
 
     local Close = Instance.new("TextButton")
-    Close.Size = UDim2.fromOffset(28,28)
-    Close.Position = UDim2.new(1,-32,0.5,-14)
-    Close.Text = "X"
+    Close.Size = UDim2.fromOffset(24,24)
+    Close.Position = UDim2.new(1,-30,0.5,-12)
+    Close.Text = "×"
     Close.Font = Enum.Font.GothamBold
-    Close.TextSize = 14
-    Close.TextColor3 = Color3.fromRGB(255,255,255)
-    Close.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    Close.TextSize = 20
+    Close.TextColor3 = Color3.fromRGB(200,200,200)
+    Close.BackgroundTransparency = 1
     Close.BorderSizePixel = 0
     Close.Parent = Top
-    Corner(Close)
 
     local BodyVisible = true
     Close.MouseButton1Click:Connect(function()
@@ -173,8 +172,8 @@ function Library:CreateWindow(Title)
     Drag(Top, Main)
 
     local Tabs = Instance.new("Frame")
-    Tabs.Position = UDim2.fromOffset(8,46)
-    Tabs.Size = UDim2.fromOffset(115,260)
+    Tabs.Position = UDim2.fromOffset(8,48)
+    Tabs.Size = UDim2.fromOffset(115,284)
     Tabs.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     Tabs.BorderSizePixel = 0
     Tabs.Parent = Main
@@ -191,8 +190,8 @@ function Library:CreateWindow(Title)
     TabList.Padding = UDim.new(0,8)
 
     local Pages = Instance.new("Frame")
-    Pages.Position = UDim2.fromOffset(130,46)
-    Pages.Size = UDim2.fromOffset(360,260)
+    Pages.Position = UDim2.fromOffset(130,48)
+    Pages.Size = UDim2.fromOffset(360,284)
     Pages.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     Pages.BorderSizePixel = 0
     Pages.Parent = Main
@@ -224,7 +223,7 @@ function Library:CreateWindow(Title)
         Pad.Parent = Page
 
         local Layout = Instance.new("UIListLayout", Page)
-        Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        Layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
         Layout.Padding = UDim.new(0,12)
 
         Btn.MouseButton1Click:Connect(function()
@@ -245,6 +244,7 @@ function Library:CreateWindow(Title)
             B.TextColor3 = Color3.fromRGB(240,240,240)
             B.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
             B.BorderSizePixel = 0
+            B.TextXAlignment = Enum.TextXAlignment.Left
             B.Parent = Page
             Corner(B)
 
@@ -253,6 +253,204 @@ function Library:CreateWindow(Title)
                     Callback(function(t,m)
                         Notify(Gui,t,m)
                     end)
+                end
+            end)
+        end
+
+        function Tab:CreateToggle(Text, Default, Callback)
+            local T = Instance.new("TextButton")
+            T.Size = UDim2.fromOffset(320,34)
+            T.Text = Text
+            T.Font = Enum.Font.Gotham
+            T.TextSize = 14
+            T.TextColor3 = Color3.fromRGB(240,240,240)
+            T.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            T.BorderSizePixel = 0
+            T.TextXAlignment = Enum.TextXAlignment.Left
+            T.Parent = Page
+            Corner(T)
+
+            local state = Default
+
+            local Dot = Instance.new("Frame")
+            Dot.Size = UDim2.fromOffset(20,20)
+            Dot.Position = UDim2.new(1,-30,0.5,-10)
+            Dot.BackgroundColor3 = state and Color3.fromRGB(120,255,120) or Color3.fromRGB(80,80,80)
+            Dot.BorderSizePixel = 0
+            Dot.Parent = T
+            Corner(Dot)
+
+            T.MouseButton1Click:Connect(function()
+                state = not state
+                Dot.BackgroundColor3 = state and Color3.fromRGB(120,255,120) or Color3.fromRGB(80,80,80)
+                if Callback then Callback(state) end
+            end)
+        end
+
+        function Tab:CreateInput(Text, Placeholder, Callback)
+            local Box = Instance.new("Frame")
+            Box.Size = UDim2.fromOffset(320,34)
+            Box.BackgroundColor3 = Color3.fromRGB(50,50,50)
+            Box.BorderSizePixel = 0
+            Box.Parent = Page
+            Corner(Box)
+
+            local Label = Instance.new("TextLabel")
+            Label.BackgroundTransparency = 1
+            Label.Size = UDim2.fromOffset(150,34)
+            Label.Position = UDim2.fromOffset(10,0)
+            Label.Text = Text
+            Label.Font = Enum.Font.Gotham
+            Label.TextSize = 14
+            Label.TextColor3 = Color3.fromRGB(240,240,240)
+            Label.TextXAlignment = Enum.TextXAlignment.Left
+            Label.Parent = Box
+
+            local Input = Instance.new("TextBox")
+            Input.Size = UDim2.fromOffset(150,26)
+            Input.Position = UDim2.new(1,-160,0.5,-13)
+            Input.BackgroundColor3 = Color3.fromRGB(35,35,35)
+            Input.Text = ""
+            Input.PlaceholderText = Placeholder
+            Input.Font = Enum.Font.Gotham
+            Input.TextSize = 14
+            Input.TextColor3 = Color3.fromRGB(255,255,255)
+            Input.BorderSizePixel = 0
+            Input.Parent = Box
+            Corner(Input)
+
+            Input.FocusLost:Connect(function()
+                if Callback then Callback(Input.Text) end
+            end)
+        end
+
+        function Tab:CreateSlider(Text, Min, Max, Default, Callback)
+            local S = Instance.new("Frame")
+            S.Size = UDim2.fromOffset(320,50)
+            S.BackgroundColor3 = Color3.fromRGB(50,50,50)
+            S.BorderSizePixel = 0
+            S.Parent = Page
+            Corner(S)
+
+            local Label = Instance.new("TextLabel")
+            Label.BackgroundTransparency = 1
+            Label.Size = UDim2.fromOffset(200,20)
+            Label.Position = UDim2.fromOffset(10,5)
+            Label.Text = Text .. ": " .. Default
+            Label.Font = Enum.Font.Gotham
+            Label.TextSize = 14
+            Label.TextColor3 = Color3.fromRGB(240,240,240)
+            Label.TextXAlignment = Enum.TextXAlignment.Left
+            Label.Parent = S
+
+            local Bar = Instance.new("Frame")
+            Bar.Size = UDim2.fromOffset(300,6)
+            Bar.Position = UDim2.fromOffset(10,32)
+            Bar.BackgroundColor3 = Color3.fromRGB(35,35,35)
+            Bar.BorderSizePixel = 0
+            Bar.Parent = S
+            Corner(Bar)
+
+            local Fill = Instance.new("Frame")
+            Fill.Size = UDim2.fromOffset((Default-Min)/(Max-Min)*300,6)
+            Fill.BackgroundColor3 = Color3.fromRGB(120,120,255)
+            Fill.BorderSizePixel = 0
+            Fill.Parent = Bar
+            Corner(Fill)
+
+            local dragging = false
+
+            Bar.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    dragging = true
+                end
+            end)
+
+            UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    dragging = false
+                end
+            end)
+
+            UserInputService.InputChanged:Connect(function(input)
+                if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                    local rel = math.clamp((input.Position.X - Bar.AbsolutePosition.X) / 300, 0, 1)
+                    local val = math.floor(Min + (Max-Min)*rel)
+                    Fill.Size = UDim2.fromOffset(rel*300,6)
+                    Label.Text = Text .. ": " .. val
+                    if Callback then Callback(val) end
+                end
+            end)
+        end
+
+        function Tab:CreateDropdown(Text, List, Callback)
+            local D = Instance.new("Frame")
+            D.Size = UDim2.fromOffset(320,34)
+            D.BackgroundColor3 = Color3.fromRGB(50,50,50)
+            D.BorderSizePixel = 0
+            D.Parent = Page
+            Corner(D)
+
+            local Label = Instance.new("TextLabel")
+            Label.BackgroundTransparency = 1
+            Label.Size = UDim2.fromOffset(200,34)
+            Label.Position = UDim2.fromOffset(10,0)
+            Label.Text = Text
+            Label.Font = Enum.Font.Gotham
+            Label.TextSize = 14
+            Label.TextColor3 = Color3.fromRGB(240,240,240)
+            Label.TextXAlignment = Enum.TextXAlignment.Left
+            Label.Parent = D
+
+            local Arrow = Instance.new("TextLabel")
+            Arrow.BackgroundTransparency = 1
+            Arrow.Size = UDim2.fromOffset(20,34)
+            Arrow.Position = UDim2.new(1,-30,0)
+            Arrow.Text = "▼"
+            Arrow.Font = Enum.Font.GothamBold
+            Arrow.TextSize = 14
+            Arrow.TextColor3 = Color3.fromRGB(240,240,240)
+            Arrow.Parent = D
+
+            local Open = false
+
+            local ListFrame = Instance.new("Frame")
+            ListFrame.Size = UDim2.fromOffset(320, #List * 30)
+            ListFrame.Position = UDim2.fromOffset(0,36)
+            ListFrame.BackgroundColor3 = Color3.fromRGB(40,40,40)
+            ListFrame.BorderSizePixel = 0
+            ListFrame.Visible = false
+            ListFrame.Parent = D
+            Corner(ListFrame)
+
+            local LLayout = Instance.new("UIListLayout", ListFrame)
+            LLayout.Padding = UDim.new(0,4)
+
+            for _,v in ipairs(List) do
+                local Opt = Instance.new("TextButton")
+                Opt.Size = UDim2.fromOffset(320,26)
+                Opt.Text = v
+                Opt.Font = Enum.Font.Gotham
+                Opt.TextSize = 14
+                Opt.TextColor3 = Color3.fromRGB(240,240,240)
+                Opt.BackgroundColor3 = Color3.fromRGB(55,55,55)
+                Opt.BorderSizePixel = 0
+                Opt.TextXAlignment = Enum.TextXAlignment.Left
+                Opt.Parent = ListFrame
+                Corner(Opt)
+
+                Opt.MouseButton1Click:Connect(function()
+                    Label.Text = Text .. ": " .. v
+                    ListFrame.Visible = false
+                    Open = false
+                    if Callback then Callback(v) end
+                end)
+            end
+
+            D.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    Open = not Open
+                    ListFrame.Visible = Open
                 end
             end)
         end
