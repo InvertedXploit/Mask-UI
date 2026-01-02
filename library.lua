@@ -1,9 +1,14 @@
+-- MASK UI LIBRARY | DARK GRAY | ROUNDED | FULL
+
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 
 local Library = {}
 local CORNER = UDim.new(0,12)
+local TOGGLE_KEY = Enum.KeyCode.RightShift
+
+local toggled = true
 
 pcall(function()
     local pg = Players.LocalPlayer:WaitForChild("PlayerGui")
@@ -171,6 +176,14 @@ function Library:CreateWindow(Title)
 
     Drag(Top, Main)
 
+    UserInputService.InputBegan:Connect(function(input, gp)
+        if gp then return end
+        if input.KeyCode == TOGGLE_KEY then
+            toggled = not toggled
+            Gui.Enabled = toggled
+        end
+    end)
+
     local Tabs = Instance.new("Frame")
     Tabs.Position = UDim2.fromOffset(8,48)
     Tabs.Size = UDim2.fromOffset(115,284)
@@ -211,26 +224,36 @@ function Library:CreateWindow(Title)
         Btn.Parent = Tabs
         Corner(Btn)
 
-        local Page = Instance.new("Frame")
-        Page.Size = UDim2.fromScale(1,1)
-        Page.BackgroundTransparency = 1
-        Page.Visible = false
-        Page.Parent = Pages
+        local Scroll = Instance.new("ScrollingFrame")
+        Scroll.Size = UDim2.fromScale(1,1)
+        Scroll.CanvasSize = UDim2.new(0,0,0,0)
+        Scroll.ScrollBarThickness = 6
+        Scroll.ScrollBarImageColor3 = Color3.fromRGB(120,120,120)
+        Scroll.BackgroundTransparency = 1
+        Scroll.Visible = false
+        Scroll.Parent = Pages
 
         local Pad = Instance.new("UIPadding")
         Pad.PaddingTop = UDim.new(0,12)
         Pad.PaddingLeft = UDim.new(0,12)
-        Pad.Parent = Page
+        Pad.PaddingRight = UDim.new(0,12)
+        Pad.Parent = Scroll
 
-        local Layout = Instance.new("UIListLayout", Page)
+        local Layout = Instance.new("UIListLayout", Scroll)
         Layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
         Layout.Padding = UDim.new(0,12)
 
+        Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            Scroll.CanvasSize = UDim2.new(0,0,0,Layout.AbsoluteContentSize.Y + 12)
+        end)
+
         Btn.MouseButton1Click:Connect(function()
             for _,v in pairs(Pages:GetChildren()) do
-                if v:IsA("Frame") then v.Visible = false end
+                if v:IsA("ScrollingFrame") then
+                    v.Visible = false
+                end
             end
-            Page.Visible = true
+            Scroll.Visible = true
         end)
 
         local Tab = {}
@@ -245,8 +268,13 @@ function Library:CreateWindow(Title)
             B.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
             B.BorderSizePixel = 0
             B.TextXAlignment = Enum.TextXAlignment.Left
-            B.Parent = Page
+            B.AutoButtonColor = true
+            B.Parent = Scroll
             Corner(B)
+
+            local PadIn = Instance.new("UIPadding")
+            PadIn.PaddingLeft = UDim.new(0,10)
+            PadIn.Parent = B
 
             B.MouseButton1Click:Connect(function()
                 if Callback then
@@ -260,44 +288,56 @@ function Library:CreateWindow(Title)
         function Tab:CreateToggle(Text, Default, Callback)
             local T = Instance.new("TextButton")
             T.Size = UDim2.fromOffset(320,34)
-            T.Text = Text
+            T.Text = ""
             T.Font = Enum.Font.Gotham
             T.TextSize = 14
             T.TextColor3 = Color3.fromRGB(240,240,240)
             T.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
             T.BorderSizePixel = 0
             T.TextXAlignment = Enum.TextXAlignment.Left
-            T.Parent = Page
+            T.AutoButtonColor = true
+            T.Parent = Scroll
             Corner(T)
+
+            local Label = Instance.new("TextLabel")
+            Label.BackgroundTransparency = 1
+            Label.Size = UDim2.fromScale(1,1)
+            Label.Position = UDim2.fromOffset(10,0)
+            Label.Text = Text
+            Label.Font = Enum.Font.Gotham
+            Label.TextSize = 14
+            Label.TextColor3 = Color3.fromRGB(240,240,240)
+            Label.TextXAlignment = Enum.TextXAlignment.Left
+            Label.Parent = T
 
             local state = Default
 
             local Dot = Instance.new("Frame")
             Dot.Size = UDim2.fromOffset(20,20)
             Dot.Position = UDim2.new(1,-30,0.5,-10)
-            Dot.BackgroundColor3 = state and Color3.fromRGB(120,255,120) or Color3.fromRGB(80,80,80)
+            Dot.BackgroundColor3 = state and Color3.fromRGB(255,255,255) or Color3.fromRGB(100,100,100)
             Dot.BorderSizePixel = 0
             Dot.Parent = T
             Corner(Dot)
 
             T.MouseButton1Click:Connect(function()
                 state = not state
-                Dot.BackgroundColor3 = state and Color3.fromRGB(120,255,120) or Color3.fromRGB(80,80,80)
+                Dot.BackgroundColor3 = state and Color3.fromRGB(255,255,255) or Color3.fromRGB(100,100,100)
                 if Callback then Callback(state) end
             end)
         end
 
         function Tab:CreateInput(Text, Placeholder, Callback)
             local Box = Instance.new("Frame")
-            Box.Size = UDim2.fromOffset(320,34)
+            Box.Size = UDim2.fromOffset(320,40)
             Box.BackgroundColor3 = Color3.fromRGB(50,50,50)
             Box.BorderSizePixel = 0
-            Box.Parent = Page
+            Box.Parent = Scroll
             Corner(Box)
 
             local Label = Instance.new("TextLabel")
             Label.BackgroundTransparency = 1
-            Label.Size = UDim2.fromOffset(150,34)
+            Label.Size = UDim2.fromOffset(150,40)
             Label.Position = UDim2.fromOffset(10,0)
             Label.Text = Text
             Label.Font = Enum.Font.Gotham
@@ -316,11 +356,14 @@ function Library:CreateWindow(Title)
             Input.TextSize = 14
             Input.TextColor3 = Color3.fromRGB(255,255,255)
             Input.BorderSizePixel = 0
+            Input.ClearTextOnFocus = false
             Input.Parent = Box
             Corner(Input)
 
-            Input.FocusLost:Connect(function()
-                if Callback then Callback(Input.Text) end
+            Input.FocusLost:Connect(function(enterPressed)
+                if Callback and enterPressed then
+                    Callback(Input.Text)
+                end
             end)
         end
 
@@ -329,12 +372,12 @@ function Library:CreateWindow(Title)
             S.Size = UDim2.fromOffset(320,50)
             S.BackgroundColor3 = Color3.fromRGB(50,50,50)
             S.BorderSizePixel = 0
-            S.Parent = Page
+            S.Parent = Scroll
             Corner(S)
 
             local Label = Instance.new("TextLabel")
             Label.BackgroundTransparency = 1
-            Label.Size = UDim2.fromOffset(200,20)
+            Label.Size = UDim2.fromOffset(260,20)
             Label.Position = UDim2.fromOffset(10,5)
             Label.Text = Text .. ": " .. Default
             Label.Font = Enum.Font.Gotham
@@ -352,17 +395,27 @@ function Library:CreateWindow(Title)
             Corner(Bar)
 
             local Fill = Instance.new("Frame")
-            Fill.Size = UDim2.fromOffset((Default-Min)/(Max-Min)*300,6)
-            Fill.BackgroundColor3 = Color3.fromRGB(120,120,255)
+            local startRel = (Default - Min) / (Max - Min)
+            Fill.Size = UDim2.fromOffset(startRel * 300,6)
+            Fill.BackgroundColor3 = Color3.fromRGB(255,255,255)
             Fill.BorderSizePixel = 0
             Fill.Parent = Bar
             Corner(Fill)
 
             local dragging = false
 
+            local function setFromInput(input)
+                local rel = math.clamp((input.Position.X - Bar.AbsolutePosition.X) / 300, 0, 1)
+                local val = math.floor(Min + (Max - Min) * rel)
+                Fill.Size = UDim2.fromOffset(rel * 300,6)
+                Label.Text = Text .. ": " .. val
+                if Callback then Callback(val) end
+            end
+
             Bar.InputBegan:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 then
                     dragging = true
+                    setFromInput(input)
                 end
             end)
 
@@ -374,11 +427,7 @@ function Library:CreateWindow(Title)
 
             UserInputService.InputChanged:Connect(function(input)
                 if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                    local rel = math.clamp((input.Position.X - Bar.AbsolutePosition.X) / 300, 0, 1)
-                    local val = math.floor(Min + (Max-Min)*rel)
-                    Fill.Size = UDim2.fromOffset(rel*300,6)
-                    Label.Text = Text .. ": " .. val
-                    if Callback then Callback(val) end
+                    setFromInput(input)
                 end
             end)
         end
@@ -388,12 +437,12 @@ function Library:CreateWindow(Title)
             D.Size = UDim2.fromOffset(320,34)
             D.BackgroundColor3 = Color3.fromRGB(50,50,50)
             D.BorderSizePixel = 0
-            D.Parent = Page
+            D.Parent = Scroll
             Corner(D)
 
             local Label = Instance.new("TextLabel")
             Label.BackgroundTransparency = 1
-            Label.Size = UDim2.fromOffset(200,34)
+            Label.Size = UDim2.new(1,-40,1,0)
             Label.Position = UDim2.fromOffset(10,0)
             Label.Text = Text
             Label.Font = Enum.Font.Gotham
@@ -415,20 +464,26 @@ function Library:CreateWindow(Title)
             local Open = false
 
             local ListFrame = Instance.new("Frame")
-            ListFrame.Size = UDim2.fromOffset(320, #List * 30)
-            ListFrame.Position = UDim2.fromOffset(0,36)
+            ListFrame.Size = UDim2.fromOffset(320, #List * 28 + 8)
+            ListFrame.Position = UDim2.fromOffset(0,34)
             ListFrame.BackgroundColor3 = Color3.fromRGB(40,40,40)
             ListFrame.BorderSizePixel = 0
             ListFrame.Visible = false
             ListFrame.Parent = D
             Corner(ListFrame)
 
+            local LPad = Instance.new("UIPadding")
+            LPad.PaddingTop = UDim.new(0,4)
+            LPad.PaddingLeft = UDim.new(0,4)
+            LPad.PaddingRight = UDim.new(0,4)
+            LPad.Parent = ListFrame
+
             local LLayout = Instance.new("UIListLayout", ListFrame)
             LLayout.Padding = UDim.new(0,4)
 
             for _,v in ipairs(List) do
                 local Opt = Instance.new("TextButton")
-                Opt.Size = UDim2.fromOffset(320,26)
+                Opt.Size = UDim2.fromOffset(312,24)
                 Opt.Text = v
                 Opt.Font = Enum.Font.Gotham
                 Opt.TextSize = 14
@@ -438,6 +493,10 @@ function Library:CreateWindow(Title)
                 Opt.TextXAlignment = Enum.TextXAlignment.Left
                 Opt.Parent = ListFrame
                 Corner(Opt)
+
+                local PadIn = Instance.new("UIPadding")
+                PadIn.PaddingLeft = UDim.new(0,8)
+                PadIn.Parent = Opt
 
                 Opt.MouseButton1Click:Connect(function()
                     Label.Text = Text .. ": " .. v
@@ -456,7 +515,7 @@ function Library:CreateWindow(Title)
         end
 
         if #Pages:GetChildren() == 1 then
-            Page.Visible = true
+            Scroll.Visible = true
         end
 
         return Tab
