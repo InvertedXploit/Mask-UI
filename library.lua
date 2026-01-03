@@ -1,7 +1,6 @@
 --========================================================--
---                  Mask / Fluent-Style UI
---                  Single-File Library
---         Updated: no top bar, cleaner layout
+--                        MaskUI
+--                  General-Purpose UI Library
 --========================================================--
 
 local Players      = game:GetService("Players")
@@ -46,7 +45,6 @@ end
 
 local Theme = {
     Background    = Color3.fromRGB(10, 10, 14),
-    Sidebar       = Color3.fromRGB(14, 14, 20),
     SidebarTint   = Color3.fromRGB(16, 16, 26),
     Element       = Color3.fromRGB(22, 22, 30),
     ElementAlt    = Color3.fromRGB(18, 18, 26),
@@ -169,27 +167,25 @@ function Fluent:CreateWindow(opts)
     self.ToggleKey = opts.ToggleKey or Enum.KeyCode.RightShift
     self.MinHeight = 44
 
-    -- ScreenGui
     local gui = Create("ScreenGui", {
-        Name            = "MaskUI",
-        ResetOnSpawn    = false,
-        ZIndexBehavior  = Enum.ZIndexBehavior.Global,
-        DisplayOrder    = 9999,
-        Parent          = LocalPlayer:WaitForChild("PlayerGui")
+        Name           = "MaskUI",
+        ResetOnSpawn   = false,
+        ZIndexBehavior = Enum.ZIndexBehavior.Global,
+        DisplayOrder   = 9999,
+        Parent         = LocalPlayer:WaitForChild("PlayerGui")
     })
 
     self.Gui = gui
     self.NotificationHolder = CreateNotificationRoot(gui)
 
-    -- Root window
     local window = Create("Frame", {
-        Name                   = "Window",
-        Parent                 = gui,
-        Size                   = self.Size,
-        Position               = UDim2.fromScale(0.5, 0.5),
-        AnchorPoint            = Vector2.new(0.5, 0.5),
-        BackgroundColor3       = Theme.Background,
-        ClipsDescendants       = false
+        Name             = "Window",
+        Parent           = gui,
+        Size             = self.Size,
+        Position         = UDim2.fromScale(0.5, 0.5),
+        AnchorPoint      = Vector2.new(0.5, 0.5),
+        BackgroundColor3 = Theme.Background,
+        ClipsDescendants = false
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
         Create("UIStroke", {
@@ -200,27 +196,19 @@ function Fluent:CreateWindow(opts)
     })
     self.Root = window
 
-    -- Sidebar (tabs)
+    -- Sidebar (transparent; only buttons visible)
     local sidebar = Create("Frame", {
         Name                   = "Sidebar",
         Parent                 = window,
         Size                   = UDim2.new(0, 190, 1, 0),
         Position               = UDim2.new(0, 0, 0, 0),
-        BackgroundColor3       = Theme.SidebarTint,
-        BackgroundTransparency = 0.2
-    }, {
-        -- Corner only on left side – right edge connects seamlessly to content
-        Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
-        Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.5 })
+        BackgroundTransparency = 1,
+        BorderSizePixel        = 0
     })
-
-    -- Clip the corners manually so right side looks flat (connected)
-    sidebar.ClipsDescendants = true
 
     local sidebarInner = Create("Frame", {
         Parent                 = sidebar,
-        BackgroundColor3       = Theme.SidebarTint,
-        BackgroundTransparency = 0.2,
+        BackgroundTransparency = 1,
         BorderSizePixel        = 0,
         Size                   = UDim2.new(1, 0, 1, 0),
         Position               = UDim2.new(0, 0, 0, 0)
@@ -252,26 +240,24 @@ function Fluent:CreateWindow(opts)
 
     self.SidebarScroll = sidebarScroll
 
-    -- Content holder (same height, connected visually)
+    -- Content holder (tab frame)
     local contentHolder = Create("Frame", {
         Name                   = "ContentHolder",
         Parent                 = window,
         Size                   = UDim2.new(1, -190, 1, 0),
         Position               = UDim2.new(0, 190, 0, 0),
         BackgroundColor3       = Theme.ElementAlt,
-        BackgroundTransparency = 0.05
+        BackgroundTransparency = 0.05,
+        BorderSizePixel        = 0,
+        ClipsDescendants       = true
     }, {
-        Create("UICorner", {
-            CornerRadius = UDim.new(0, 8)
-        }),
+        Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
         Create("UIStroke", {
             Color        = Theme.StrokeSoft,
             Transparency = 0.45
         })
     })
 
-    -- Clip left edges so they appear flush with sidebar
-    contentHolder.ClipsDescendants = true
     local contentInner = Create("Frame", {
         Parent                 = contentHolder,
         BackgroundColor3       = Theme.ElementAlt,
@@ -282,15 +268,12 @@ function Fluent:CreateWindow(opts)
     })
 
     self.ContentHolder = contentInner
-    self.Sections = {}
-    self.Tabs     = {}
-    self.ActiveTab = nil
-    self.Minimized = false
+    self.Sections      = {}
+    self.Tabs          = {}
+    self.ActiveTab     = nil
+    self.Minimized     = false
 
-    --====================================================--
-    --                    Dragging Fix
-    --====================================================--
-
+    -- Dragging only from tab/content frame
     local dragging      = false
     local dragStart     = nil
     local startPosition = nil
@@ -316,16 +299,11 @@ function Fluent:CreateWindow(opts)
         startPosition = nil
     end
 
-    -- Dragging via sidebar OR content area
-    local dragAreas = { sidebarInner, contentInner }
-
-    for _, area in ipairs(dragAreas) do
-        area.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                beginDrag(input)
-            end
-        end)
-    end
+    contentInner.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            beginDrag(input)
+        end
+    end)
 
     UIS.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement then
@@ -339,10 +317,7 @@ function Fluent:CreateWindow(opts)
         end
     end)
 
-    --====================================================--
-    --                  UI Toggle (Global)
-    --====================================================--
-
+    -- UI Toggle (global)
     local visible = true
 
     local function setVisible(v)
@@ -356,10 +331,6 @@ function Fluent:CreateWindow(opts)
             setVisible(not visible)
         end
     end)
-
-    --====================================================--
-    --                   Public Window API
-    --====================================================--
 
     function self:SetToggleKey(keycode)
         self.ToggleKey = keycode
@@ -423,7 +394,7 @@ function Window:CreateTab(tabName, sectionName)
         BackgroundColor3       = Theme.SidebarTint,
         BackgroundTransparency = 0.4,
         AutoButtonColor        = false,
-        Text                   = "",
+        Text                   = ""
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 4) }),
         Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.6 }),
@@ -438,7 +409,6 @@ function Window:CreateTab(tabName, sectionName)
         })
     })
 
-    -- Content page
     local page = Create("Frame", {
         Parent                 = self.ContentHolder,
         Size                   = UDim2.fromScale(1, 1),
@@ -457,12 +427,29 @@ function Window:CreateTab(tabName, sectionName)
         })
     })
 
+    -- Centered title at top of tab frame
+    local titleLabel = Create("TextLabel", {
+        Parent                 = page,
+        BackgroundTransparency = 1,
+        Size                   = UDim2.new(1, 0, 0, 28),
+        Text                   = tabName,
+        Font                   = Enum.Font.GothamSemibold,
+        TextSize               = 17,
+        TextColor3             = Theme.Text,
+        TextXAlignment         = Enum.TextXAlignment.Center,
+        TextYAlignment         = Enum.TextYAlignment.Top
+    })
+
+    -- Push elements down a bit below the title
+    page.UIPadding.PaddingTop = UDim.new(0, 36)
+
     local tab = setmetatable({
         Window  = self,
         Section = section,
         Name    = tabName,
         Button  = tabButton,
-        Page    = page
+        Page    = page,
+        Title   = titleLabel
     }, Tab)
 
     table.insert(section.Tabs, tab)
@@ -486,13 +473,19 @@ function Window:CreateTab(tabName, sectionName)
 
     tabButton.MouseEnter:Connect(function()
         if self.ActiveTab ~= tab then
-            Tween(tabButton, { BackgroundColor3 = Theme.ElementAlt, BackgroundTransparency = 0.2 }, 0.1)
+            Tween(tabButton, {
+                BackgroundColor3       = Theme.SidebarTint,
+                BackgroundTransparency = 0.2
+            }, 0.1)
         end
     end)
 
     tabButton.MouseLeave:Connect(function()
         if self.ActiveTab ~= tab then
-            Tween(tabButton, { BackgroundColor3 = Theme.SidebarTint, BackgroundTransparency = 0.4 }, 0.1)
+            Tween(tabButton, {
+                BackgroundColor3       = Theme.SidebarTint,
+                BackgroundTransparency = 0.4
+            }, 0.1)
         end
     end)
 
@@ -500,7 +493,6 @@ function Window:CreateTab(tabName, sectionName)
         setActive()
     end)
 
-    -- First tab => active
     if not self.ActiveTab then
         setActive()
     end
@@ -518,11 +510,11 @@ function Tab:AddButton(options)
     local callback = options.Callback
 
     local btn = Create("TextButton", {
-        Parent                 = self.Page,
-        Size                   = UDim2.new(1, 0, 0, 30),
-        BackgroundColor3       = Theme.Element,
-        AutoButtonColor        = false,
-        Text                   = ""
+        Parent           = self.Page,
+        Size             = UDim2.new(1, 0, 0, 30),
+        BackgroundColor3 = Theme.Element,
+        AutoButtonColor  = false,
+        Text             = ""
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 4) }),
         Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 }),
@@ -749,7 +741,7 @@ end
 
 function Tab:AddInput(options)
     options = options or {}
-    local labelText  = options.Text or "Input"
+    local labelText   = options.Text or "Input"
     local placeholder = options.Placeholder or ""
     local default     = options.Default or ""
     local callback    = options.Callback
@@ -932,11 +924,13 @@ function Tab:AddDropdown(options)
     end
 
     local function setOpen(v)
-        open      = v
+        open       = v
         arrow.Text = v and "▴" or "▾"
         local count  = #values
         local height = math.clamp(count * 22 + (count > 0 and 4 or 0), 0, 160)
-        Tween(listFrame, { Size = v and UDim2.new(1, 0, 0, height) or UDim2.new(1, 0, 0, 0) }, 0.16)
+        Tween(listFrame, {
+            Size = v and UDim2.new(1, 0, 0, height) or UDim2.new(1, 0, 0, 0)
+        }, 0.16)
     end
 
     button.MouseButton1Click:Connect(function()
@@ -946,16 +940,16 @@ function Tab:AddDropdown(options)
     rebuild()
 
     return {
-        Instance   = frame,
-        Set        = function(_, v)
+        Instance  = frame,
+        Set       = function(_, v)
             current     = v
             button.Text = tostring(current or "--")
             if callback then
                 coroutine.wrap(callback)(current)
             end
         end,
-        Get        = function() return current end,
-        SetValues  = function(_, vals)
+        Get       = function() return current end,
+        SetValues = function(_, vals)
             values = vals or {}
             rebuild()
         end
@@ -1049,10 +1043,10 @@ end
 --                     Public API
 --========================================================--
 
-local API = {}
+local MaskUI = {}
 
-function API:CreateWindow(opts)
+function MaskUI:CreateWindow(opts)
     return Fluent:CreateWindow(opts)
 end
 
-return API
+return MaskUI
