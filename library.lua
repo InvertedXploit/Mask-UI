@@ -1,11 +1,13 @@
 --========================================================--
 --                        MaskUI
 --                  General-Purpose UI Library
+--                 (Updated with refinements)
 --========================================================--
 
 local Players      = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UIS          = game:GetService("UserInputService")
+local CoreGui      = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -171,8 +173,8 @@ function Fluent:CreateWindow(opts)
         Name           = "MaskUI",
         ResetOnSpawn   = false,
         ZIndexBehavior = Enum.ZIndexBehavior.Global,
-        DisplayOrder   = 9999,
-        Parent         = LocalPlayer:WaitForChild("PlayerGui")
+        DisplayOrder   = 999999, -- super high priority
+        Parent         = CoreGui
     })
 
     self.Gui = gui
@@ -196,7 +198,7 @@ function Fluent:CreateWindow(opts)
     })
     self.Root = window
 
-    -- Sidebar (transparent; only buttons visible)
+    -- Sidebar (transparent; only buttons/labels visible)
     local sidebar = Create("Frame", {
         Name                   = "Sidebar",
         Parent                 = window,
@@ -273,7 +275,10 @@ function Fluent:CreateWindow(opts)
     self.ActiveTab     = nil
     self.Minimized     = false
 
-    -- Dragging only from tab/content frame
+    --====================================================--
+    --           Dragging ONLY from sidebar area
+    --====================================================--
+
     local dragging      = false
     local dragStart     = nil
     local startPosition = nil
@@ -299,7 +304,7 @@ function Fluent:CreateWindow(opts)
         startPosition = nil
     end
 
-    contentInner.InputBegan:Connect(function(input)
+    sidebarInner.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             beginDrag(input)
         end
@@ -317,11 +322,14 @@ function Fluent:CreateWindow(opts)
         end
     end)
 
-    -- UI Toggle (global)
+    --====================================================--
+    --                  UI Toggle (global)
+    --====================================================--
+
     local visible = true
 
     local function setVisible(v)
-        visible    = v
+        visible     = v
         gui.Enabled = v
     end
 
@@ -383,7 +391,7 @@ function Window:CreateSection(sectionName)
 end
 
 function Window:CreateTab(tabName, sectionName)
-    tabName    = tabName    or "Tab"
+    tabName     = tabName     or "Tab"
     sectionName = sectionName or "Misc"
 
     local section = self:CreateSection(sectionName)
@@ -767,18 +775,31 @@ function Tab:AddInput(options)
         Text                   = labelText
     })
 
+    -- Right aligned input box with subtle outline
     local box = Create("TextBox", {
         Parent                 = frame,
-        BackgroundTransparency = 1,
-        Size                   = UDim2.new(0.6, -10, 1, 0),
-        Position               = UDim2.new(0.4, 0, 0, 0),
-        TextXAlignment         = Enum.TextXAlignment.Left,
+        Size                   = UDim2.new(0.6, -14, 0, 24),
+        Position               = UDim2.new(0.4, 4, 0.5, 0),
+        AnchorPoint            = Vector2.new(0, 0.5),
+        BackgroundColor3       = Theme.ElementAlt,
+        TextXAlignment         = Enum.TextXAlignment.Right,
         Font                   = Enum.Font.Gotham,
         TextSize               = 14,
         TextColor3             = Theme.Text,
         PlaceholderColor3      = Theme.SubText,
         PlaceholderText        = placeholder,
-        Text                   = default
+        Text                   = default,
+        BorderSizePixel        = 0
+    }, {
+        Create("UICorner", { CornerRadius = UDim.new(0, 4) }),
+        Create("UIStroke", {
+            Color        = Theme.StrokeSoft,
+            Transparency = 0.6
+        }),
+        Create("UIPadding", {
+            PaddingLeft  = UDim.new(0, 6),
+            PaddingRight = UDim.new(0, 6)
+        })
     })
 
     box.FocusLost:Connect(function(enterPressed)
