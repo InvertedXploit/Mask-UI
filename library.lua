@@ -305,15 +305,49 @@ function Fluent:CreateWindow(opts)
     self.Minimized     = false
 
     --====================================================--
-    --           Dragging ONLY from sidebar area
+    --           Dragging from title areas and sidebar
     --====================================================--
 
     local dragging      = false
     local dragStart     = nil
     local startPosition = nil
 
+    local function isElement(input)
+        -- Check if input is on an interactive element (don't drag if so)
+        local target = input.Target
+        if not target then return false end
+        
+        -- Don't drag if clicking in content area (except title)
+        local parent = target
+        while parent and parent ~= window do
+            -- If it's in the content holder, check if it's an element
+            if parent == self.ContentHolder or (parent.Parent == self.ContentHolder) then
+                -- Title labels are draggable
+                if parent:IsA("TextLabel") and parent.Text ~= self.Title then
+                    -- Check if it's a page title (centered, at top)
+                    local page = parent.Parent
+                    if page and page:IsA("Frame") and page.Parent == self.ContentHolder then
+                        -- It's a page title, allow dragging
+                        return false
+                    end
+                end
+                -- Everything else in content area is an element
+                return true
+            end
+            -- If it's a tab button, allow dragging
+            if parent.Parent == self.SidebarScroll then
+                return false
+            end
+            parent = parent.Parent
+        end
+        return false
+    end
+
     local function beginDrag(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            -- Don't drag if clicking on an element
+            if isElement(input) then return end
+            
             dragging      = true
             dragStart     = input.Position
             startPosition = window.Position
@@ -338,7 +372,13 @@ function Fluent:CreateWindow(opts)
         end
     end
 
+    -- Make title areas and sidebar draggable
+    sidebarTitle.InputBegan:Connect(beginDrag)
     sidebarInner.InputBegan:Connect(beginDrag)
+    
+    -- Also make content holder draggable (but elements inside will be blocked by isElement)
+    contentHolder.InputBegan:Connect(beginDrag)
+    
     UIS.InputChanged:Connect(updateDrag)
     UIS.InputEnded:Connect(endDrag)
 
@@ -420,12 +460,12 @@ function Window:CreateTab(tabName, sectionName)
         Parent                 = self.SidebarScroll,
         Size                   = UDim2.new(1, 0, 0, 24),
         BackgroundColor3       = Theme.SidebarTint,
-        BackgroundTransparency = 0.7,
+        BackgroundTransparency = 1,
         AutoButtonColor        = false,
         Text                   = ""
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
-        Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.6 }),
+        Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.8 }),
         Create("UIPadding", {
             PaddingLeft  = UDim.new(0, 12),
             PaddingRight = UDim.new(0, 12)
@@ -459,7 +499,7 @@ function Window:CreateTab(tabName, sectionName)
         })
     })
 
-    -- Centered title at top of tab frame
+    -- Centered title at top of tab frame (draggable)
     local titleLabel = Create("TextLabel", {
         Parent                 = page,
         BackgroundTransparency = 1,
@@ -471,14 +511,37 @@ function Window:CreateTab(tabName, sectionName)
         TextXAlignment         = Enum.TextXAlignment.Center,
         TextYAlignment         = Enum.TextYAlignment.Top
     })
+    
+    -- Title is draggable via the window's drag system (isElement function allows it)
 
     -- Push elements down a bit below the title
     page.UIPadding.PaddingTop = UDim.new(0, 36)
     
     -- Update content scroll size when page content changes
-    page.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    local function updateContentSize()
         if page.Visible then
-            local contentSize = page.UIListLayout.AbsoluteContentSize.Y + 24
+            -- Calculate all children including expanded dropdowns
+            local maxY = 0
+            for _, child in ipairs(page:GetChildren()) do
+                if child:IsA("Frame") and child ~= page.UIListLayout and child ~= page.UIPadding then
+                    local childBottom = child.AbsolutePosition.Y + child.AbsoluteSize.Y
+                    -- Check for expanded dropdown lists
+                    for _, subChild in ipairs(child:GetDescendants()) do
+                        if subChild:IsA("Frame") and subChild.Size.Y.Offset > 0 and subChild.Parent == child then
+                            local listBottom = subChild.AbsolutePosition.Y + subChild.AbsoluteSize.Y
+                            if listBottom > childBottom then
+                                childBottom = listBottom
+                            end
+                        end
+                    end
+                    if childBottom > maxY then
+                        maxY = childBottom
+                    end
+                end
+            end
+            
+            local pageTop = page.AbsolutePosition.Y
+            local contentSize = (maxY - pageTop) + 24
             self.ContentHolder.CanvasSize = UDim2.new(0, 0, 0, contentSize)
             
             -- Only show scrollbar when content exceeds visible area
@@ -488,6 +551,14 @@ function Window:CreateTab(tabName, sectionName)
                 self.ContentHolder.ScrollBarThickness = 0
             end
         end
+    end
+    
+    page.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
+    
+    -- Also update when any child changes size (for dropdowns)
+    page.ChildAdded:Connect(function()
+        task.wait()
+        updateContentSize()
     end)
 
     local tab = setmetatable({
@@ -507,7 +578,7 @@ function Window:CreateTab(tabName, sectionName)
             self.ActiveTab.Page.Visible = false
         Tween(self.ActiveTab.Button, {
             BackgroundColor3       = Theme.SidebarTint,
-            BackgroundTransparency = 0.7
+            BackgroundTransparency = 1
         }, 0.12)
         end
         self.ActiveTab = tab
@@ -536,7 +607,7 @@ function Window:CreateTab(tabName, sectionName)
         if self.ActiveTab ~= tab then
             Tween(tabButton, {
                 BackgroundColor3       = Theme.SidebarTint,
-                BackgroundTransparency = 0.5
+                BackgroundTransparency = 0.8
             }, 0.1)
         end
     end)
@@ -545,7 +616,7 @@ function Window:CreateTab(tabName, sectionName)
         if self.ActiveTab ~= tab then
             Tween(tabButton, {
                 BackgroundColor3       = Theme.SidebarTint,
-                BackgroundTransparency = 0.7
+                BackgroundTransparency = 1
             }, 0.1)
         end
     end)
@@ -770,15 +841,10 @@ function Tab:AddSlider(options)
         Size             = UDim2.fromOffset(14, 14),
         Position         = UDim2.new((value - min) / math.max((max - min), 1), 0, 0.5, 0),
         AnchorPoint      = Vector2.new(0.5, 0.5),
-        BackgroundColor3 = Theme.Text,
+        BackgroundColor3 = Theme.Accent,
         ZIndex            = 2
     }, {
-        Create("UICorner", { CornerRadius = UDim.new(1, 0) }),
-        Create("UIStroke", {
-            Color        = Theme.Accent,
-            Thickness    = 2,
-            Transparency = 0.3
-        })
+        Create("UICorner", { CornerRadius = UDim.new(1, 0) })
     })
 
     local dragging = false
@@ -1054,6 +1120,42 @@ function Tab:AddDropdown(options)
         Tween(listFrame, {
             Size = v and UDim2.new(1, 0, 0, height) or UDim2.new(1, 0, 0, 0)
         }, 0.16)
+        
+        -- Update page canvas size when dropdown opens/closes to ensure scrolling works
+        if v then
+            task.wait(0.17) -- Wait for animation
+            local page = self.Page
+            if page and page.Visible then
+                local contentSize = page.UIListLayout.AbsoluteContentSize.Y + 24
+                -- Add dropdown height to content size if it extends beyond
+                local frameBottom = frame.AbsolutePosition.Y + frame.AbsoluteSize.Y
+                local listBottom = listFrame.AbsolutePosition.Y + listFrame.AbsoluteSize.Y
+                if listBottom > frameBottom then
+                    contentSize = contentSize + (listBottom - frameBottom) + 10
+                end
+                self.Window.ContentHolder.CanvasSize = UDim2.new(0, 0, 0, contentSize)
+                
+                if contentSize > self.Window.ContentHolder.AbsoluteSize.Y then
+                    self.Window.ContentHolder.ScrollBarThickness = 2
+                else
+                    self.Window.ContentHolder.ScrollBarThickness = 0
+                end
+            end
+        else
+            -- Update when closing too
+            task.wait(0.17)
+            local page = self.Page
+            if page and page.Visible then
+                local contentSize = page.UIListLayout.AbsoluteContentSize.Y + 24
+                self.Window.ContentHolder.CanvasSize = UDim2.new(0, 0, 0, contentSize)
+                
+                if contentSize > self.Window.ContentHolder.AbsoluteSize.Y then
+                    self.Window.ContentHolder.ScrollBarThickness = 2
+                else
+                    self.Window.ContentHolder.ScrollBarThickness = 0
+                end
+            end
+        end
     end
 
     button.MouseButton1Click:Connect(function()
