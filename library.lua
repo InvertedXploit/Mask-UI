@@ -216,10 +216,29 @@ function Fluent:CreateWindow(opts)
         Position               = UDim2.new(0, 0, 0, 0)
     })
 
+    -- Title above all tabs
+    local sidebarTitle = Create("TextLabel", {
+        Parent                 = sidebarInner,
+        BackgroundTransparency = 1,
+        Size                   = UDim2.new(1, 0, 0, 32),
+        Position               = UDim2.new(0, 0, 0, 0),
+        TextXAlignment         = Enum.TextXAlignment.Left,
+        Font                   = Enum.Font.GothamSemibold,
+        TextSize               = 16,
+        TextColor3             = Theme.Text,
+        Text                   = self.Title
+    }, {
+        Create("UIPadding", {
+            PaddingLeft  = UDim.new(0, 12),
+            PaddingRight = UDim.new(0, 12),
+            PaddingTop   = UDim.new(0, 8)
+        })
+    })
+
     local sidebarScroll = Create("ScrollingFrame", {
         Parent                 = sidebarInner,
-        Size                   = UDim2.new(1, 0, 1, -20),
-        Position               = UDim2.new(0, 0, 0, 10),
+        Size                   = UDim2.new(1, 0, 1, -52),
+        Position               = UDim2.new(0, 0, 0, 32),
         BackgroundTransparency = 1,
         CanvasSize             = UDim2.fromScale(0, 0),
         ScrollBarThickness     = 2,
@@ -871,7 +890,7 @@ function Tab:AddDropdown(options)
         Font                   = Enum.Font.GothamBold,
         TextSize               = 14,
         TextColor3             = Theme.SubText,
-        Text                   = "▾"
+        Text                   = "v"
     })
 
     local listFrame = Create("Frame", {
@@ -925,7 +944,7 @@ function Tab:AddDropdown(options)
                 current       = v
                 button.Text   = tostring(current)
                 open          = false
-                arrow.Text    = "▾"
+                arrow.Text    = "v"
                 Tween(listFrame, { Size = UDim2.new(1, 0, 0, 0) }, 0.16)
                 if callback then
                     coroutine.wrap(callback)(current)
@@ -946,7 +965,7 @@ function Tab:AddDropdown(options)
 
     local function setOpen(v)
         open       = v
-        arrow.Text = v and "▴" or "▾"
+        arrow.Text = v and "^" or "v"
         local count  = #values
         local height = math.clamp(count * 22 + (count > 0 and 4 or 0), 0, 160)
         Tween(listFrame, {
