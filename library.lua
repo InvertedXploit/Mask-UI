@@ -105,7 +105,7 @@ local function CreateNotification(holder, info)
         BackgroundTransparency = 1,
         ClipsDescendants       = true
     }, {
-        Create("UICorner", { CornerRadius = UDim.new(0, 6) }),
+        Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
         Create("UIStroke", {
             Color        = Theme.StrokeSoft,
             Thickness    = 1,
@@ -189,7 +189,7 @@ function Fluent:CreateWindow(opts)
         BackgroundColor3 = Theme.Background,
         ClipsDescendants = false
     }, {
-        Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
+        Create("UICorner", { CornerRadius = UDim.new(0, 12) }),
         Create("UIStroke", {
             Color        = Theme.Stroke,
             Thickness    = 1,
@@ -216,34 +216,30 @@ function Fluent:CreateWindow(opts)
         Position               = UDim2.new(0, 0, 0, 0)
     })
 
-    -- Title above all tabs
+    -- Title above all tabs (bigger and centered)
     local sidebarTitle = Create("TextLabel", {
         Parent                 = sidebarInner,
         BackgroundTransparency = 1,
-        Size                   = UDim2.new(1, 0, 0, 32),
+        Size                   = UDim2.new(1, 0, 0, 48),
         Position               = UDim2.new(0, 0, 0, 0),
-        TextXAlignment         = Enum.TextXAlignment.Left,
+        TextXAlignment         = Enum.TextXAlignment.Center,
+        TextYAlignment         = Enum.TextYAlignment.Center,
         Font                   = Enum.Font.GothamSemibold,
-        TextSize               = 16,
+        TextSize               = 20,
         TextColor3             = Theme.Text,
         Text                   = self.Title
-    }, {
-        Create("UIPadding", {
-            PaddingLeft  = UDim.new(0, 12),
-            PaddingRight = UDim.new(0, 12),
-            PaddingTop   = UDim.new(0, 8)
-        })
     })
 
     local sidebarScroll = Create("ScrollingFrame", {
         Parent                 = sidebarInner,
-        Size                   = UDim2.new(1, 0, 1, -52),
-        Position               = UDim2.new(0, 0, 0, 32),
+        Size                   = UDim2.new(1, 0, 1, -68),
+        Position               = UDim2.new(0, 0, 0, 48),
         BackgroundTransparency = 1,
         CanvasSize             = UDim2.fromScale(0, 0),
-        ScrollBarThickness     = 2,
+        ScrollBarThickness     = 0,
         ScrollBarImageColor3   = Color3.fromRGB(80, 80, 100),
-        BorderSizePixel        = 0
+        BorderSizePixel        = 0,
+        ScrollingDirection     = Enum.ScrollingDirection.Y
     }, {
         Create("UIListLayout", {
             SortOrder = Enum.SortOrder.LayoutOrder,
@@ -251,12 +247,21 @@ function Fluent:CreateWindow(opts)
         }),
         Create("UIPadding", {
             PaddingLeft  = UDim.new(0, 10),
-            PaddingRight = UDim.new(0, 10)
+            PaddingRight = UDim.new(0, 10),
+            PaddingTop   = UDim.new(0, 8)
         })
     })
 
     sidebarScroll.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        sidebarScroll.CanvasSize = UDim2.new(0, 0, 0, sidebarScroll.UIListLayout.AbsoluteContentSize.Y + 10)
+        local contentSize = sidebarScroll.UIListLayout.AbsoluteContentSize.Y + 16
+        sidebarScroll.CanvasSize = UDim2.new(0, 0, 0, contentSize)
+        
+        -- Only show scrollbar when content exceeds visible area
+        if contentSize > sidebarScroll.AbsoluteSize.Y then
+            sidebarScroll.ScrollBarThickness = 2
+        else
+            sidebarScroll.ScrollBarThickness = 0
+        end
     end)
 
     self.SidebarScroll = sidebarScroll
@@ -272,20 +277,24 @@ function Fluent:CreateWindow(opts)
         BorderSizePixel        = 0,
         ClipsDescendants       = true
     }, {
-        Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
+        Create("UICorner", { CornerRadius = UDim.new(0, 12) }),
         Create("UIStroke", {
             Color        = Theme.StrokeSoft,
             Transparency = 0.45
         })
     })
 
-    local contentInner = Create("Frame", {
+    local contentInner = Create("ScrollingFrame", {
         Parent                 = contentHolder,
         BackgroundColor3       = Theme.ElementAlt,
         BackgroundTransparency = 0.05,
         BorderSizePixel        = 0,
         Size                   = UDim2.new(1, 0, 1, 0),
-        Position               = UDim2.new(0, 0, 0, 0)
+        Position               = UDim2.new(0, 0, 0, 0),
+        CanvasSize             = UDim2.fromScale(0, 0),
+        ScrollBarThickness     = 0,
+        ScrollBarImageColor3   = Color3.fromRGB(80, 80, 100),
+        ScrollingDirection     = Enum.ScrollingDirection.Y
     })
 
     self.ContentHolder = contentInner
@@ -303,43 +312,34 @@ function Fluent:CreateWindow(opts)
     local startPosition = nil
 
     local function beginDrag(input)
-        dragging      = true
-        dragStart     = input.Position
-        startPosition = window.Position
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging      = true
+            dragStart     = input.Position
+            startPosition = window.Position
+        end
     end
 
     local function updateDrag(input)
-        if not dragging then return end
-        local delta = input.Position - dragStart
-        window.Position = UDim2.fromOffset(
-            startPosition.X.Offset + delta.X,
-            startPosition.Y.Offset + delta.Y
-        )
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            window.Position = UDim2.fromOffset(
+                startPosition.X.Offset + delta.X,
+                startPosition.Y.Offset + delta.Y
+            )
+        end
     end
 
-    local function endDrag()
-        dragging      = false
-        dragStart     = nil
-        startPosition = nil
+    local function endDrag(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging      = false
+            dragStart     = nil
+            startPosition = nil
+        end
     end
 
-    sidebarInner.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            beginDrag(input)
-        end
-    end)
-
-    UIS.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            updateDrag(input)
-        end
-    end)
-
-    UIS.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            endDrag()
-        end
-    end)
+    sidebarInner.InputBegan:Connect(beginDrag)
+    UIS.InputChanged:Connect(updateDrag)
+    UIS.InputEnded:Connect(endDrag)
 
     --====================================================--
     --                  UI Toggle (global)
@@ -423,7 +423,7 @@ function Window:CreateTab(tabName, sectionName)
         AutoButtonColor        = false,
         Text                   = ""
     }, {
-        Create("UICorner", { CornerRadius = UDim.new(0, 4) }),
+        Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
         Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.6 }),
         Create("TextLabel", {
             BackgroundTransparency = 1,
@@ -438,7 +438,7 @@ function Window:CreateTab(tabName, sectionName)
 
     local page = Create("Frame", {
         Parent                 = self.ContentHolder,
-        Size                   = UDim2.fromScale(1, 1),
+        Size                   = UDim2.new(1, 0, 1, 0),
         BackgroundTransparency = 1,
         Visible                = false
     }, {
@@ -469,6 +469,21 @@ function Window:CreateTab(tabName, sectionName)
 
     -- Push elements down a bit below the title
     page.UIPadding.PaddingTop = UDim.new(0, 36)
+    
+    -- Update content scroll size when page content changes
+    page.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        if page.Visible then
+            local contentSize = page.UIListLayout.AbsoluteContentSize.Y + 24
+            self.ContentHolder.CanvasSize = UDim2.new(0, 0, 0, contentSize)
+            
+            -- Only show scrollbar when content exceeds visible area
+            if contentSize > self.ContentHolder.AbsoluteSize.Y then
+                self.ContentHolder.ScrollBarThickness = 2
+            else
+                self.ContentHolder.ScrollBarThickness = 0
+            end
+        end
+    end)
 
     local tab = setmetatable({
         Window  = self,
@@ -492,6 +507,20 @@ function Window:CreateTab(tabName, sectionName)
         end
         self.ActiveTab = tab
         page.Visible   = true
+        
+        -- Reset scroll position and update canvas size
+        self.ContentHolder.CanvasPosition = Vector2.new(0, 0)
+        task.wait() -- Wait a frame for layout to update
+        local contentSize = page.UIListLayout.AbsoluteContentSize.Y + 24
+        self.ContentHolder.CanvasSize = UDim2.new(0, 0, 0, contentSize)
+        
+        -- Only show scrollbar when content exceeds visible area
+        if contentSize > self.ContentHolder.AbsoluteSize.Y then
+            self.ContentHolder.ScrollBarThickness = 2
+        else
+            self.ContentHolder.ScrollBarThickness = 0
+        end
+        
         Tween(tabButton, {
             BackgroundColor3       = Theme.Element,
             BackgroundTransparency = 0
@@ -543,7 +572,7 @@ function Tab:AddButton(options)
         AutoButtonColor  = false,
         Text             = ""
     }, {
-        Create("UICorner", { CornerRadius = UDim.new(0, 4) }),
+        Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
         Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 }),
         Create("TextLabel", {
             BackgroundTransparency = 1,
@@ -594,7 +623,7 @@ function Tab:AddToggle(options)
         Size             = UDim2.new(1, 0, 0, 30),
         BackgroundColor3 = Theme.Element
     }, {
-        Create("UICorner", { CornerRadius = UDim.new(0, 4) }),
+        Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
         Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 }),
         Create("TextLabel", {
             BackgroundTransparency = 1,
@@ -681,7 +710,7 @@ function Tab:AddSlider(options)
         Size             = UDim2.new(1, 0, 0, 42),
         BackgroundColor3 = Theme.Element
     }, {
-        Create("UICorner", { CornerRadius = UDim.new(0, 4) }),
+        Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
         Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 })
     })
 
@@ -778,7 +807,7 @@ function Tab:AddInput(options)
         Size             = UDim2.new(1, 0, 0, 30),
         BackgroundColor3 = Theme.Element
     }, {
-        Create("UICorner", { CornerRadius = UDim.new(0, 4) }),
+        Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
         Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 })
     })
 
@@ -810,7 +839,7 @@ function Tab:AddInput(options)
         Text                   = default,
         BorderSizePixel        = 0
     }, {
-        Create("UICorner", { CornerRadius = UDim.new(0, 4) }),
+        Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
         Create("UIStroke", {
             Color        = Theme.StrokeSoft,
             Transparency = 0.6
@@ -852,7 +881,7 @@ function Tab:AddDropdown(options)
         Size             = UDim2.new(1, 0, 0, 30),
         BackgroundColor3 = Theme.Element
     }, {
-        Create("UICorner", { CornerRadius = UDim.new(0, 4) }),
+        Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
         Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 })
     })
 
@@ -901,7 +930,7 @@ function Tab:AddDropdown(options)
         ClipsDescendants       = true,
         ZIndex                 = 10
     }, {
-        Create("UICorner", { CornerRadius = UDim.new(0, 4) }),
+        Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
         Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 }),
         Create("UIListLayout", {
             SortOrder = Enum.SortOrder.LayoutOrder,
@@ -1014,7 +1043,7 @@ function Tab:AddKeybind(options)
         Size             = UDim2.new(1, 0, 0, 30),
         BackgroundColor3 = Theme.Element
     }, {
-        Create("UICorner", { CornerRadius = UDim.new(0, 4) }),
+        Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
         Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 })
     })
 
