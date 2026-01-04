@@ -45,7 +45,7 @@ end
 --                      Theme
 --========================================================--
 
-local Theme = {
+local DefaultTheme = {
     Background    = Color3.fromRGB(10, 10, 14),
     SidebarTint   = Color3.fromRGB(16, 16, 26),
     Element       = Color3.fromRGB(22, 22, 30),
@@ -58,6 +58,15 @@ local Theme = {
     StrokeSoft    = Color3.fromRGB(40, 40, 50),
     Notification  = Color3.fromRGB(20, 20, 27),
 }
+
+-- Helper function to merge themes
+local function mergeTheme(customTheme)
+    local theme = {}
+    for k, v in pairs(DefaultTheme) do
+        theme[k] = customTheme and customTheme[k] or v
+    end
+    return theme
+end
 
 --========================================================--
 --                      Classes
@@ -92,8 +101,9 @@ local function CreateNotificationRoot(gui)
     return holder
 end
 
-local function CreateNotification(holder, info)
+local function CreateNotification(holder, info, theme)
     info = info or {}
+    theme = theme or DefaultTheme
     local title    = info.Title or "Notification"
     local content  = info.Content or ""
     local duration = info.Duration or 4
@@ -101,13 +111,13 @@ local function CreateNotification(holder, info)
     local frame = Create("Frame", {
         Parent                 = holder,
         Size                   = UDim2.new(1, 0, 0, 68),
-        BackgroundColor3       = Theme.Notification,
+        BackgroundColor3       = theme.Notification,
         BackgroundTransparency = 1,
         ClipsDescendants       = true
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
         Create("UIStroke", {
-            Color        = Theme.StrokeSoft,
+            Color        = theme.StrokeSoft,
             Thickness    = 1,
             Transparency = 0.2
         }),
@@ -124,7 +134,7 @@ local function CreateNotification(holder, info)
             TextXAlignment         = Enum.TextXAlignment.Left,
             Font                   = Enum.Font.GothamSemibold,
             TextSize               = 14,
-            TextColor3             = Theme.Text,
+            TextColor3             = theme.Text,
             Text                   = title
         }),
         Create("TextLabel", {
@@ -136,7 +146,7 @@ local function CreateNotification(holder, info)
             TextYAlignment         = Enum.TextYAlignment.Top,
             Font                   = Enum.Font.Gotham,
             TextSize               = 13,
-            TextColor3             = Theme.SubText,
+            TextColor3             = theme.SubText,
             TextWrapped            = true,
             Text                   = content
         })
@@ -168,6 +178,9 @@ function Fluent:CreateWindow(opts)
     self.Size      = opts.Size or UDim2.fromOffset(720, 430)
     self.ToggleKey = opts.ToggleKey or Enum.KeyCode.RightShift
     self.MinHeight = 44
+    
+    -- Allow custom theme colors
+    self.Theme = mergeTheme(opts.Theme)
 
     local gui = Create("ScreenGui", {
         Name           = "MaskUI",
@@ -186,12 +199,12 @@ function Fluent:CreateWindow(opts)
         Size             = self.Size,
         Position         = UDim2.fromScale(0.5, 0.5),
         AnchorPoint      = Vector2.new(0.5, 0.5),
-        BackgroundColor3 = Theme.Background,
+        BackgroundColor3 = self.Theme.Background,
         ClipsDescendants = false
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 12) }),
         Create("UIStroke", {
-            Color        = Theme.Stroke,
+            Color        = self.Theme.Stroke,
             Thickness    = 1,
             Transparency = 0.2
         })
@@ -226,7 +239,7 @@ function Fluent:CreateWindow(opts)
         TextYAlignment         = Enum.TextYAlignment.Center,
         Font                   = Enum.Font.GothamSemibold,
         TextSize               = 20,
-        TextColor3             = Theme.Text,
+        TextColor3             = self.Theme.Text,
         Text                   = self.Title
     })
 
@@ -272,14 +285,14 @@ function Fluent:CreateWindow(opts)
         Parent                 = window,
         Size                   = UDim2.new(1, -190, 1, 0),
         Position               = UDim2.new(0, 190, 0, 0),
-        BackgroundColor3       = Theme.ElementAlt,
+        BackgroundColor3       = self.Theme.ElementAlt,
         BackgroundTransparency = 0.05,
         BorderSizePixel        = 0,
         ClipsDescendants       = true
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 12) }),
         Create("UIStroke", {
-            Color        = Theme.StrokeSoft,
+            Color        = self.Theme.StrokeSoft,
             Transparency = 0.45
         })
     })
@@ -292,7 +305,7 @@ function Fluent:CreateWindow(opts)
         Position               = UDim2.new(0, 0, 0, 0),
         CanvasSize             = UDim2.fromScale(0, 0),
         ScrollBarThickness     = 0,
-        ScrollBarImageColor3   = Color3.fromRGB(80, 80, 100),
+        ScrollBarImageColor3   = self.Theme.StrokeSoft,
         ScrollingDirection     = Enum.ScrollingDirection.Y
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 12) })
@@ -317,26 +330,56 @@ function Fluent:CreateWindow(opts)
         local target = input.Target
         if not target then return false end
         
-        -- Don't drag if clicking in content area (except title)
+        -- Always allow dragging from titles and sidebar
+        if target == sidebarTitle or target == sidebarInner or target == sidebar then
+            return false
+        end
+        
+        -- Check if it's a title label (draggable)
+        if target:IsA("TextLabel") then
+            if target == sidebarTitle then
+                return false
+            end
+            -- Check if it's a page title
+            local page = target.Parent
+            if page and page:IsA("Frame") and page.Parent == self.ContentHolder then
+                return false -- Page title is draggable
+            end
+        end
+        
+        -- Check if clicking on content holder itself (empty space)
+        if target == contentHolder then
+            return false
+        end
+        
+        -- Don't drag if clicking on interactive elements
         local parent = target
         while parent and parent ~= window do
-            -- If it's in the content holder, check if it's an element
-            if parent == self.ContentHolder or (parent.Parent == self.ContentHolder) then
-                -- Title labels are draggable
-                if parent:IsA("TextLabel") and parent.Text ~= self.Title then
-                    -- Check if it's a page title (centered, at top)
-                    local page = parent.Parent
-                    if page and page:IsA("Frame") and page.Parent == self.ContentHolder then
-                        -- It's a page title, allow dragging
-                        return false
-                    end
+            -- If it's a tab button, allow dragging
+            if parent.Parent == self.SidebarScroll then
+                return false
+            end
+            -- If it's in content area, check if it's an element
+            if parent == self.ContentHolder then
+                -- If clicking directly on content holder, it's draggable
+                if target == parent then
+                    return false
+                end
+                -- If it's a page (Frame inside ContentHolder), check if it's the title
+                if target:IsA("TextLabel") and target.Parent == parent then
+                    return false -- Title is draggable
                 end
                 -- Everything else in content area is an element
                 return true
             end
-            -- If it's a tab button, allow dragging
-            if parent.Parent == self.SidebarScroll then
-                return false
+            -- If it's an interactive element (button, textbox, slider, etc.)
+            if parent:IsA("TextButton") or parent:IsA("TextBox") then
+                -- Check if it's a tab button
+                if parent.Parent == self.SidebarScroll then
+                    return false
+                end
+                -- Otherwise it's an element
+                return true
             end
             parent = parent.Parent
         end
@@ -405,7 +448,7 @@ function Fluent:CreateWindow(opts)
     end
 
     function self:Notify(info)
-        CreateNotification(self.NotificationHolder, info)
+        CreateNotification(self.NotificationHolder, info, self.Theme)
     end
 
     return self
@@ -429,7 +472,7 @@ function Window:CreateSection(sectionName)
         TextXAlignment         = Enum.TextXAlignment.Left,
         Font                   = Enum.Font.GothamSemibold,
         TextSize               = 12,
-        TextColor3             = Theme.SubText,
+        TextColor3             = self.Window.Theme.SubText,
         Text                   = sectionName:upper()
     })
 
@@ -459,13 +502,13 @@ function Window:CreateTab(tabName, sectionName)
     local tabButton = Create("TextButton", {
         Parent                 = self.SidebarScroll,
         Size                   = UDim2.new(1, 0, 0, 24),
-        BackgroundColor3       = Theme.SidebarTint,
-        BackgroundTransparency = 1,
+        BackgroundColor3       = self.Window.Theme.SidebarTint,
+        BackgroundTransparency = 0.95,
         AutoButtonColor        = false,
         Text                   = ""
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
-        Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.8 }),
+        Create("UIStroke", { Color = self.Window.Theme.StrokeSoft, Transparency = 0.9 }),
         Create("UIPadding", {
             PaddingLeft  = UDim.new(0, 12),
             PaddingRight = UDim.new(0, 12)
@@ -476,7 +519,7 @@ function Window:CreateTab(tabName, sectionName)
             Text                   = tabName,
             Font                   = Enum.Font.Gotham,
             TextSize               = 13,
-            TextColor3             = Theme.Text,
+            TextColor3             = self.Window.Theme.Text,
             TextXAlignment         = Enum.TextXAlignment.Left
         })
     })
@@ -507,7 +550,7 @@ function Window:CreateTab(tabName, sectionName)
         Text                   = tabName,
         Font                   = Enum.Font.GothamSemibold,
         TextSize               = 17,
-        TextColor3             = Theme.Text,
+        TextColor3             = self.Window.Theme.Text,
         TextXAlignment         = Enum.TextXAlignment.Center,
         TextYAlignment         = Enum.TextYAlignment.Top
     })
@@ -577,8 +620,8 @@ function Window:CreateTab(tabName, sectionName)
         if self.ActiveTab then
             self.ActiveTab.Page.Visible = false
         Tween(self.ActiveTab.Button, {
-            BackgroundColor3       = Theme.SidebarTint,
-            BackgroundTransparency = 1
+            BackgroundColor3       = self.Window.Theme.SidebarTint,
+            BackgroundTransparency = 0.95
         }, 0.12)
         end
         self.ActiveTab = tab
@@ -606,8 +649,8 @@ function Window:CreateTab(tabName, sectionName)
     tabButton.MouseEnter:Connect(function()
         if self.ActiveTab ~= tab then
             Tween(tabButton, {
-                BackgroundColor3       = Theme.SidebarTint,
-                BackgroundTransparency = 0.8
+                BackgroundColor3       = self.Window.Theme.SidebarTint,
+                BackgroundTransparency = 0.85
             }, 0.1)
         end
     end)
@@ -615,8 +658,8 @@ function Window:CreateTab(tabName, sectionName)
     tabButton.MouseLeave:Connect(function()
         if self.ActiveTab ~= tab then
             Tween(tabButton, {
-                BackgroundColor3       = Theme.SidebarTint,
-                BackgroundTransparency = 1
+                BackgroundColor3       = self.Window.Theme.SidebarTint,
+                BackgroundTransparency = 0.95
             }, 0.1)
         end
     end)
@@ -640,16 +683,17 @@ function Tab:AddButton(options)
     options = options or {}
     local text     = options.Text or "Button"
     local callback = options.Callback
+    local theme    = self.Window.Theme
 
     local btn = Create("TextButton", {
         Parent           = self.Page,
         Size             = UDim2.new(1, 0, 0, 30),
-        BackgroundColor3 = Theme.Element,
+        BackgroundColor3 = theme.Element,
         AutoButtonColor  = false,
         Text             = ""
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
-        Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 }),
+        Create("UIStroke", { Color = theme.StrokeSoft, Transparency = 0.55 }),
         Create("UIPadding", {
             PaddingLeft  = UDim.new(0, 14),
             PaddingRight = UDim.new(0, 14),
@@ -662,22 +706,22 @@ function Tab:AddButton(options)
             Text                   = text,
             Font                   = Enum.Font.Gotham,
             TextSize               = 14,
-            TextColor3             = Theme.Text,
+            TextColor3             = theme.Text,
             TextXAlignment         = Enum.TextXAlignment.Left
         })
     })
 
     btn.MouseEnter:Connect(function()
-        Tween(btn, { BackgroundColor3 = Theme.ElementAlt }, 0.12)
+        Tween(btn, { BackgroundColor3 = theme.ElementAlt }, 0.12)
     end)
     btn.MouseLeave:Connect(function()
-        Tween(btn, { BackgroundColor3 = Theme.Element }, 0.12)
+        Tween(btn, { BackgroundColor3 = theme.Element }, 0.12)
     end)
     btn.MouseButton1Down:Connect(function()
-        Tween(btn, { BackgroundColor3 = Theme.AccentSoft }, 0.08)
+        Tween(btn, { BackgroundColor3 = theme.AccentSoft }, 0.08)
     end)
     btn.MouseButton1Up:Connect(function()
-        Tween(btn, { BackgroundColor3 = Theme.ElementAlt }, 0.1)
+        Tween(btn, { BackgroundColor3 = theme.ElementAlt }, 0.1)
     end)
 
     btn.MouseButton1Click:Connect(function()
@@ -698,14 +742,15 @@ function Tab:AddToggle(options)
     local text     = options.Text or "Toggle"
     local default  = options.Default == nil and false or options.Default
     local callback = options.Callback
+    local theme    = self.Window.Theme
 
     local frame = Create("Frame", {
         Parent           = self.Page,
         Size             = UDim2.new(1, 0, 0, 30),
-        BackgroundColor3 = Theme.Element
+        BackgroundColor3 = theme.Element
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
-        Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 }),
+        Create("UIStroke", { Color = theme.StrokeSoft, Transparency = 0.55 }),
         Create("UIPadding", {
             PaddingLeft  = UDim.new(0, 14),
             PaddingRight = UDim.new(0, 14),
@@ -719,7 +764,7 @@ function Tab:AddToggle(options)
             Text                   = text,
             Font                   = Enum.Font.Gotham,
             TextSize               = 14,
-            TextColor3             = Theme.Text,
+            TextColor3             = theme.Text,
             TextXAlignment         = Enum.TextXAlignment.Left
         })
     })
@@ -729,17 +774,17 @@ function Tab:AddToggle(options)
         Size             = UDim2.fromOffset(34, 16),
         Position         = UDim2.new(1, -10, 0.5, 0),
         AnchorPoint      = Vector2.new(1, 0.5),
-        BackgroundColor3 = Theme.ElementAlt
+        BackgroundColor3 = theme.ElementAlt
     }, {
         Create("UICorner", { CornerRadius = UDim.new(1, 0) }),
-        Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 })
+        Create("UIStroke", { Color = theme.StrokeSoft, Transparency = 0.55 })
     })
 
     local thumb = Create("Frame", {
         Parent           = switch,
         Size             = UDim2.fromOffset(14, 14),
         Position         = UDim2.fromOffset(1, 1),
-        BackgroundColor3 = Theme.Text
+        BackgroundColor3 = theme.Text
     }, {
         Create("UICorner", { CornerRadius = UDim.new(1, 0) })
     })
@@ -750,11 +795,11 @@ function Tab:AddToggle(options)
         state = v
         Tween(thumb, {
             Position         = v and UDim2.fromOffset(19, 1) or UDim2.fromOffset(1, 1),
-            BackgroundColor3 = v and Theme.Background or Theme.Text
+            BackgroundColor3 = v and theme.Background or theme.Text
         }, 0.14)
 
         Tween(switch, {
-            BackgroundColor3 = v and Theme.Accent or Theme.ElementAlt
+            BackgroundColor3 = v and theme.Accent or theme.ElementAlt
         }, 0.14)
 
         if fire and callback then
@@ -789,16 +834,17 @@ function Tab:AddSlider(options)
     local default  = options.Default or min
     local rounding = options.Rounding or 1
     local callback = options.Callback
+    local theme    = self.Window.Theme
 
     local value = default
 
     local frame = Create("Frame", {
         Parent           = self.Page,
         Size             = UDim2.new(1, 0, 0, 42),
-        BackgroundColor3 = Theme.Element
+        BackgroundColor3 = theme.Element
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
-        Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 }),
+        Create("UIStroke", { Color = theme.StrokeSoft, Transparency = 0.55 }),
         Create("UIPadding", {
             PaddingLeft  = UDim.new(0, 14),
             PaddingRight = UDim.new(0, 14),
@@ -815,7 +861,7 @@ function Tab:AddSlider(options)
         TextXAlignment         = Enum.TextXAlignment.Left,
         Font                   = Enum.Font.Gotham,
         TextSize               = 13,
-        TextColor3             = Theme.Text,
+        TextColor3             = theme.Text,
         Text                   = ("%s: %s"):format(text, tostring(value))
     })
 
@@ -823,7 +869,7 @@ function Tab:AddSlider(options)
         Parent           = frame,
         Size             = UDim2.new(0.5, -24, 0, 6),
         Position         = UDim2.new(0.5, 14, 0.5, 0),
-        BackgroundColor3 = Theme.ElementAlt
+        BackgroundColor3 = theme.ElementAlt
     }, {
         Create("UICorner", { CornerRadius = UDim.new(1, 0) })
     })
@@ -831,7 +877,7 @@ function Tab:AddSlider(options)
     local fill = Create("Frame", {
         Parent           = bar,
         Size             = UDim2.new((value - min) / math.max((max - min), 1), 0, 1, 0),
-        BackgroundColor3 = Theme.Accent
+        BackgroundColor3 = theme.Accent
     }, {
         Create("UICorner", { CornerRadius = UDim.new(1, 0) })
     })
@@ -841,7 +887,7 @@ function Tab:AddSlider(options)
         Size             = UDim2.fromOffset(14, 14),
         Position         = UDim2.new((value - min) / math.max((max - min), 1), 0, 0.5, 0),
         AnchorPoint      = Vector2.new(0.5, 0.5),
-        BackgroundColor3 = Theme.Accent,
+        BackgroundColor3 = theme.Accent,
         ZIndex            = 2
     }, {
         Create("UICorner", { CornerRadius = UDim.new(1, 0) })
@@ -909,14 +955,15 @@ function Tab:AddInput(options)
     local placeholder = options.Placeholder or ""
     local default     = options.Default or ""
     local callback    = options.Callback
+    local theme       = self.Window.Theme
 
     local frame = Create("Frame", {
         Parent           = self.Page,
         Size             = UDim2.new(1, 0, 0, 30),
-        BackgroundColor3 = Theme.Element
+        BackgroundColor3 = theme.Element
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
-        Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 }),
+        Create("UIStroke", { Color = theme.StrokeSoft, Transparency = 0.55 }),
         Create("UIPadding", {
             PaddingLeft  = UDim.new(0, 14),
             PaddingRight = UDim.new(0, 14),
@@ -933,7 +980,7 @@ function Tab:AddInput(options)
         TextXAlignment         = Enum.TextXAlignment.Left,
         Font                   = Enum.Font.Gotham,
         TextSize               = 14,
-        TextColor3             = Theme.Text,
+        TextColor3             = theme.Text,
         Text                   = labelText
     })
 
@@ -943,19 +990,19 @@ function Tab:AddInput(options)
         Size                   = UDim2.new(0.6, -20, 0, 24),
         Position               = UDim2.new(0.4, 0, 0.5, 0),
         AnchorPoint            = Vector2.new(0, 0.5),
-        BackgroundColor3       = Theme.ElementAlt,
+        BackgroundColor3       = theme.ElementAlt,
         TextXAlignment         = Enum.TextXAlignment.Right,
         Font                   = Enum.Font.Gotham,
         TextSize               = 14,
-        TextColor3             = Theme.Text,
-        PlaceholderColor3      = Theme.SubText,
+        TextColor3             = theme.Text,
+        PlaceholderColor3      = theme.SubText,
         PlaceholderText        = placeholder,
         Text                   = default,
         BorderSizePixel        = 0
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
         Create("UIStroke", {
-            Color        = Theme.StrokeSoft,
+            Color        = theme.StrokeSoft,
             Transparency = 0.6
         }),
         Create("UIPadding", {
@@ -987,16 +1034,17 @@ function Tab:AddDropdown(options)
     local values    = options.Values or {}
     local default   = options.Default or values[1]
     local callback  = options.Callback
+    local theme     = self.Window.Theme
 
     local current = default
 
     local frame = Create("Frame", {
         Parent           = self.Page,
         Size             = UDim2.new(1, 0, 0, 30),
-        BackgroundColor3 = Theme.Element
+        BackgroundColor3 = theme.Element
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
-        Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 }),
+        Create("UIStroke", { Color = theme.StrokeSoft, Transparency = 0.55 }),
         Create("UIPadding", {
             PaddingLeft  = UDim.new(0, 14),
             PaddingRight = UDim.new(0, 14),
@@ -1013,7 +1061,7 @@ function Tab:AddDropdown(options)
         TextXAlignment         = Enum.TextXAlignment.Left,
         Font                   = Enum.Font.Gotham,
         TextSize               = 14,
-        TextColor3             = Theme.Text,
+        TextColor3             = theme.Text,
         Text                   = labelText
     })
 
@@ -1025,7 +1073,7 @@ function Tab:AddDropdown(options)
         TextXAlignment         = Enum.TextXAlignment.Right,
         Font                   = Enum.Font.Gotham,
         TextSize               = 14,
-        TextColor3             = Theme.Text,
+        TextColor3             = theme.Text,
         AutoButtonColor        = false,
         Text                   = tostring(current or "--")
     })
@@ -1038,7 +1086,7 @@ function Tab:AddDropdown(options)
         TextXAlignment         = Enum.TextXAlignment.Center,
         Font                   = Enum.Font.GothamBold,
         TextSize               = 14,
-        TextColor3             = Theme.SubText,
+        TextColor3             = theme.SubText,
         Text                   = "v"
     })
 
@@ -1046,12 +1094,12 @@ function Tab:AddDropdown(options)
         Parent                 = frame,
         Position               = UDim2.new(0, 0, 1, 2),
         Size                   = UDim2.new(1, 0, 0, 0),
-        BackgroundColor3       = Theme.ElementAlt,
+        BackgroundColor3       = theme.ElementAlt,
         ClipsDescendants       = true,
         ZIndex                 = 10
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
-        Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 }),
+        Create("UIStroke", { Color = theme.StrokeSoft, Transparency = 0.55 }),
         Create("UIListLayout", {
             SortOrder = Enum.SortOrder.LayoutOrder,
             Padding   = UDim.new(0, 2)
@@ -1074,19 +1122,19 @@ function Tab:AddDropdown(options)
             local optBtn = Create("TextButton", {
                 Parent                 = listFrame,
                 Size                   = UDim2.new(1, 0, 0, 22),
-                BackgroundColor3       = Theme.ElementAlt,
+                BackgroundColor3       = theme.ElementAlt,
                 Text                   = v,
                 Font                   = Enum.Font.Gotham,
                 TextSize               = 13,
-                TextColor3             = Theme.Text,
+                TextColor3             = theme.Text,
                 AutoButtonColor        = false
             })
 
             optBtn.MouseEnter:Connect(function()
-                Tween(optBtn, { BackgroundColor3 = Theme.Element }, 0.1)
+                Tween(optBtn, { BackgroundColor3 = theme.Element }, 0.1)
             end)
             optBtn.MouseLeave:Connect(function()
-                Tween(optBtn, { BackgroundColor3 = Theme.ElementAlt }, 0.1)
+                Tween(optBtn, { BackgroundColor3 = theme.ElementAlt }, 0.1)
             end)
 
             optBtn.MouseButton1Click:Connect(function()
@@ -1194,13 +1242,15 @@ function Tab:AddKeybind(options)
     local currentKey = default
     local listening  = false
 
+    local theme = self.Window.Theme
+
     local frame = Create("Frame", {
         Parent           = self.Page,
         Size             = UDim2.new(1, 0, 0, 30),
-        BackgroundColor3 = Theme.Element
+        BackgroundColor3 = theme.Element
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
-        Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 }),
+        Create("UIStroke", { Color = theme.StrokeSoft, Transparency = 0.55 }),
         Create("UIPadding", {
             PaddingLeft  = UDim.new(0, 14),
             PaddingRight = UDim.new(0, 14),
@@ -1217,7 +1267,7 @@ function Tab:AddKeybind(options)
         TextXAlignment         = Enum.TextXAlignment.Left,
         Font                   = Enum.Font.Gotham,
         TextSize               = 14,
-        TextColor3             = Theme.Text,
+        TextColor3             = theme.Text,
         Text                   = labelText
     })
 
@@ -1229,7 +1279,7 @@ function Tab:AddKeybind(options)
         TextXAlignment         = Enum.TextXAlignment.Right,
         Font                   = Enum.Font.Gotham,
         TextSize               = 14,
-        TextColor3             = Theme.Text,
+        TextColor3             = theme.Text,
         AutoButtonColor        = false,
         Text                   = currentKey.Name
     })
