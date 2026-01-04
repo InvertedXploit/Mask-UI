@@ -286,8 +286,7 @@ function Fluent:CreateWindow(opts)
 
     local contentInner = Create("ScrollingFrame", {
         Parent                 = contentHolder,
-        BackgroundColor3       = Theme.ElementAlt,
-        BackgroundTransparency = 0.05,
+        BackgroundTransparency = 1,
         BorderSizePixel        = 0,
         Size                   = UDim2.new(1, 0, 1, 0),
         Position               = UDim2.new(0, 0, 0, 0),
@@ -295,6 +294,8 @@ function Fluent:CreateWindow(opts)
         ScrollBarThickness     = 0,
         ScrollBarImageColor3   = Color3.fromRGB(80, 80, 100),
         ScrollingDirection     = Enum.ScrollingDirection.Y
+    }, {
+        Create("UICorner", { CornerRadius = UDim.new(0, 12) })
     })
 
     self.ContentHolder = contentInner
@@ -419,12 +420,16 @@ function Window:CreateTab(tabName, sectionName)
         Parent                 = self.SidebarScroll,
         Size                   = UDim2.new(1, 0, 0, 24),
         BackgroundColor3       = Theme.SidebarTint,
-        BackgroundTransparency = 0.4,
+        BackgroundTransparency = 0.7,
         AutoButtonColor        = false,
         Text                   = ""
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
         Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.6 }),
+        Create("UIPadding", {
+            PaddingLeft  = UDim.new(0, 12),
+            PaddingRight = UDim.new(0, 12)
+        }),
         Create("TextLabel", {
             BackgroundTransparency = 1,
             Size                   = UDim2.fromScale(1, 1),
@@ -500,10 +505,10 @@ function Window:CreateTab(tabName, sectionName)
     local function setActive()
         if self.ActiveTab then
             self.ActiveTab.Page.Visible = false
-            Tween(self.ActiveTab.Button, {
-                BackgroundColor3       = Theme.SidebarTint,
-                BackgroundTransparency = 0.4
-            }, 0.12)
+        Tween(self.ActiveTab.Button, {
+            BackgroundColor3       = Theme.SidebarTint,
+            BackgroundTransparency = 0.7
+        }, 0.12)
         end
         self.ActiveTab = tab
         page.Visible   = true
@@ -531,7 +536,7 @@ function Window:CreateTab(tabName, sectionName)
         if self.ActiveTab ~= tab then
             Tween(tabButton, {
                 BackgroundColor3       = Theme.SidebarTint,
-                BackgroundTransparency = 0.2
+                BackgroundTransparency = 0.5
             }, 0.1)
         end
     end)
@@ -540,7 +545,7 @@ function Window:CreateTab(tabName, sectionName)
         if self.ActiveTab ~= tab then
             Tween(tabButton, {
                 BackgroundColor3       = Theme.SidebarTint,
-                BackgroundTransparency = 0.4
+                BackgroundTransparency = 0.7
             }, 0.1)
         end
     end)
@@ -574,6 +579,12 @@ function Tab:AddButton(options)
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
         Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 }),
+        Create("UIPadding", {
+            PaddingLeft  = UDim.new(0, 14),
+            PaddingRight = UDim.new(0, 14),
+            PaddingTop   = UDim.new(0, 6),
+            PaddingBottom = UDim.new(0, 6)
+        }),
         Create("TextLabel", {
             BackgroundTransparency = 1,
             Size                   = UDim2.fromScale(1, 1),
@@ -581,8 +592,7 @@ function Tab:AddButton(options)
             Font                   = Enum.Font.Gotham,
             TextSize               = 14,
             TextColor3             = Theme.Text,
-            TextXAlignment         = Enum.TextXAlignment.Left,
-            Position               = UDim2.new(0, 10, 0, 0)
+            TextXAlignment         = Enum.TextXAlignment.Left
         })
     })
 
@@ -625,10 +635,16 @@ function Tab:AddToggle(options)
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
         Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 }),
+        Create("UIPadding", {
+            PaddingLeft  = UDim.new(0, 14),
+            PaddingRight = UDim.new(0, 14),
+            PaddingTop   = UDim.new(0, 6),
+            PaddingBottom = UDim.new(0, 6)
+        }),
         Create("TextLabel", {
             BackgroundTransparency = 1,
             Size                   = UDim2.new(1, -40, 1, 0),
-            Position               = UDim2.new(0, 10, 0, 0),
+            Position               = UDim2.new(0, 0, 0, 0),
             Text                   = text,
             Font                   = Enum.Font.Gotham,
             TextSize               = 14,
@@ -711,14 +727,20 @@ function Tab:AddSlider(options)
         BackgroundColor3 = Theme.Element
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
-        Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 })
+        Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 }),
+        Create("UIPadding", {
+            PaddingLeft  = UDim.new(0, 14),
+            PaddingRight = UDim.new(0, 14),
+            PaddingTop   = UDim.new(0, 8),
+            PaddingBottom = UDim.new(0, 8)
+        })
     })
 
     local label = Create("TextLabel", {
         Parent                 = frame,
         BackgroundTransparency = 1,
-        Size                   = UDim2.new(0.5, -10, 1, 0),
-        Position               = UDim2.new(0, 10, 0, 0),
+        Size                   = UDim2.new(0.5, -14, 1, 0),
+        Position               = UDim2.new(0, 14, 0, 0),
         TextXAlignment         = Enum.TextXAlignment.Left,
         Font                   = Enum.Font.Gotham,
         TextSize               = 13,
@@ -728,8 +750,8 @@ function Tab:AddSlider(options)
 
     local bar = Create("Frame", {
         Parent           = frame,
-        Size             = UDim2.new(0.5, -20, 0, 6),
-        Position         = UDim2.new(0.5, 10, 0.5, 0),
+        Size             = UDim2.new(0.5, -24, 0, 6),
+        Position         = UDim2.new(0.5, 14, 0.5, 0),
         BackgroundColor3 = Theme.ElementAlt
     }, {
         Create("UICorner", { CornerRadius = UDim.new(1, 0) })
@@ -743,6 +765,22 @@ function Tab:AddSlider(options)
         Create("UICorner", { CornerRadius = UDim.new(1, 0) })
     })
 
+    local thumb = Create("Frame", {
+        Parent           = bar,
+        Size             = UDim2.fromOffset(14, 14),
+        Position         = UDim2.new((value - min) / math.max((max - min), 1), 0, 0.5, 0),
+        AnchorPoint      = Vector2.new(0.5, 0.5),
+        BackgroundColor3 = Theme.Text,
+        ZIndex            = 2
+    }, {
+        Create("UICorner", { CornerRadius = UDim.new(1, 0) }),
+        Create("UIStroke", {
+            Color        = Theme.Accent,
+            Thickness    = 2,
+            Transparency = 0.3
+        })
+    })
+
     local dragging = false
 
     local function setValue(newVal, fire)
@@ -753,17 +791,21 @@ function Tab:AddSlider(options)
         value = newVal
         local alpha = (value - min) / math.max((max - min), 1)
         Tween(fill, { Size = UDim2.new(alpha, 0, 1, 0) }, 0.08)
+        Tween(thumb, { Position = UDim2.new(alpha, 0, 0.5, 0) }, 0.08)
         label.Text = ("%s: %s"):format(text, tostring(value))
         if fire and callback then
             coroutine.wrap(callback)(value)
         end
     end
 
-    bar.InputBegan:Connect(function(input)
+    local function startDrag(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
         end
-    end)
+    end
+
+    bar.InputBegan:Connect(startDrag)
+    thumb.InputBegan:Connect(startDrag)
 
     UIS.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -808,14 +850,20 @@ function Tab:AddInput(options)
         BackgroundColor3 = Theme.Element
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
-        Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 })
+        Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 }),
+        Create("UIPadding", {
+            PaddingLeft  = UDim.new(0, 14),
+            PaddingRight = UDim.new(0, 14),
+            PaddingTop   = UDim.new(0, 6),
+            PaddingBottom = UDim.new(0, 6)
+        })
     })
 
     Create("TextLabel", {
         Parent                 = frame,
         BackgroundTransparency = 1,
-        Size                   = UDim2.new(0.4, -10, 1, 0),
-        Position               = UDim2.new(0, 10, 0, 0),
+        Size                   = UDim2.new(0.4, -14, 1, 0),
+        Position               = UDim2.new(0, 0, 0, 0),
         TextXAlignment         = Enum.TextXAlignment.Left,
         Font                   = Enum.Font.Gotham,
         TextSize               = 14,
@@ -826,8 +874,8 @@ function Tab:AddInput(options)
     -- Right aligned input box with subtle outline
     local box = Create("TextBox", {
         Parent                 = frame,
-        Size                   = UDim2.new(0.6, -14, 0, 24),
-        Position               = UDim2.new(0.4, 4, 0.5, 0),
+        Size                   = UDim2.new(0.6, -20, 0, 24),
+        Position               = UDim2.new(0.4, 0, 0.5, 0),
         AnchorPoint            = Vector2.new(0, 0.5),
         BackgroundColor3       = Theme.ElementAlt,
         TextXAlignment         = Enum.TextXAlignment.Right,
@@ -882,14 +930,20 @@ function Tab:AddDropdown(options)
         BackgroundColor3 = Theme.Element
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
-        Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 })
+        Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 }),
+        Create("UIPadding", {
+            PaddingLeft  = UDim.new(0, 14),
+            PaddingRight = UDim.new(0, 14),
+            PaddingTop   = UDim.new(0, 6),
+            PaddingBottom = UDim.new(0, 6)
+        })
     })
 
     Create("TextLabel", {
         Parent                 = frame,
         BackgroundTransparency = 1,
-        Size                   = UDim2.new(0.4, -10, 1, 0),
-        Position               = UDim2.new(0, 10, 0, 0),
+        Size                   = UDim2.new(0.4, -14, 1, 0),
+        Position               = UDim2.new(0, 0, 0, 0),
         TextXAlignment         = Enum.TextXAlignment.Left,
         Font                   = Enum.Font.Gotham,
         TextSize               = 14,
@@ -1044,14 +1098,20 @@ function Tab:AddKeybind(options)
         BackgroundColor3 = Theme.Element
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
-        Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 })
+        Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.55 }),
+        Create("UIPadding", {
+            PaddingLeft  = UDim.new(0, 14),
+            PaddingRight = UDim.new(0, 14),
+            PaddingTop   = UDim.new(0, 6),
+            PaddingBottom = UDim.new(0, 6)
+        })
     })
 
     Create("TextLabel", {
         Parent                 = frame,
         BackgroundTransparency = 1,
-        Size                   = UDim2.new(0.4, -10, 1, 0),
-        Position               = UDim2.new(0, 10, 0, 0),
+        Size                   = UDim2.new(0.4, -14, 1, 0),
+        Position               = UDim2.new(0, 0, 0, 0),
         TextXAlignment         = Enum.TextXAlignment.Left,
         Font                   = Enum.Font.Gotham,
         TextSize               = 14,
