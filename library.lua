@@ -1,13 +1,15 @@
 --========================================================--
 --                        MaskUI
 --                  General-Purpose UI Library
---                 (Updated with refinements)
+--              (Fluent / Acrylic Enhanced Edition)
 --========================================================--
 
 local Players      = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UIS          = game:GetService("UserInputService")
 local CoreGui      = game:GetService("CoreGui")
+local RunService   = game:GetService("RunService")
+local Lighting     = game:GetService("Lighting")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -41,31 +43,74 @@ local function Lerp(a, b, t)
     return a + (b - a) * t
 end
 
+local function DeepCopy(tbl)
+    local copy = {}
+    for k, v in pairs(tbl) do
+        if type(v) == "table" then
+            copy[k] = DeepCopy(v)
+        else
+            copy[k] = v
+        end
+    end
+    return copy
+end
+
 --========================================================--
---                      Theme
+--                      Theme System
 --========================================================--
 
-local Theme = {
-    Background    = Color3.fromRGB(10, 10, 14),
-    SidebarTint   = Color3.fromRGB(16, 16, 26),
-    Element       = Color3.fromRGB(22, 22, 30),
-    ElementAlt    = Color3.fromRGB(18, 18, 26),
-    Accent        = Color3.fromRGB(140, 90, 255),
-    AccentSoft    = Color3.fromRGB(105, 70, 210),
-    Text          = Color3.fromRGB(235, 235, 240),
-    SubText       = Color3.fromRGB(150, 150, 165),
-    Stroke        = Color3.fromRGB(50, 50, 60),
-    StrokeSoft    = Color3.fromRGB(40, 40, 50),
-    Notification  = Color3.fromRGB(20, 20, 27),
+local ThemePresets = {
+    Dark = {
+        Name          = "Dark",
+        Background    = Color3.fromRGB(10, 10, 14),
+        SidebarTint   = Color3.fromRGB(16, 16, 26),
+        Element       = Color3.fromRGB(22, 22, 30),
+        ElementAlt    = Color3.fromRGB(18, 18, 26),
+        Accent        = Color3.fromRGB(140, 90, 255),
+        AccentSoft    = Color3.fromRGB(105, 70, 210),
+        Text          = Color3.fromRGB(235, 235, 240),
+        SubText       = Color3.fromRGB(150, 150, 165),
+        Stroke        = Color3.fromRGB(50, 50, 60),
+        StrokeSoft    = Color3.fromRGB(40, 40, 50),
+        Notification  = Color3.fromRGB(20, 20, 27),
+        Topbar        = Color3.fromRGB(14, 14, 20),
+        SearchBar     = Color3.fromRGB(20, 20, 30)
+    },
+
+    Light = {
+        Name          = "Light",
+        Background    = Color3.fromRGB(240, 242, 248),
+        SidebarTint   = Color3.fromRGB(230, 232, 240),
+        Element       = Color3.fromRGB(250, 252, 255),
+        ElementAlt    = Color3.fromRGB(235, 238, 245),
+        Accent        = Color3.fromRGB(120, 80, 230),
+        AccentSoft    = Color3.fromRGB(100, 70, 210),
+        Text          = Color3.fromRGB(25, 28, 40),
+        SubText       = Color3.fromRGB(105, 110, 130),
+        Stroke        = Color3.fromRGB(210, 214, 225),
+        StrokeSoft    = Color3.fromRGB(200, 205, 220),
+        Notification  = Color3.fromRGB(240, 242, 248),
+        Topbar        = Color3.fromRGB(230, 232, 240),
+        SearchBar     = Color3.fromRGB(235, 238, 245)
+    }
 }
+
+local Theme = DeepCopy(ThemePresets.Dark)
+
+local function ApplyThemePreset(presetName)
+    local preset = ThemePresets[presetName]
+    if not preset then return end
+    Theme = DeepCopy(preset)
+end
 
 --========================================================--
 --                      Classes
 --========================================================--
 
-local Fluent = {}
-local Window = {}
-local Tab    = {}
+local Fluent   = {}
+local Window   = {}
+local Tab      = {}
+local Elements = {}
 
 Window.__index = Window
 Tab.__index    = Tab
@@ -100,7 +145,7 @@ local function CreateNotification(holder, info)
 
     local frame = Create("Frame", {
         Parent                 = holder,
-        Size                   = UDim2.new(1, 0, 0, 68),
+        Size                   = UDim2.new(1, 0, 0, 70),
         BackgroundColor3       = Theme.Notification,
         BackgroundTransparency = 1,
         ClipsDescendants       = true
@@ -156,6 +201,51 @@ local function CreateNotification(holder, info)
 end
 
 --========================================================--
+--                  Acrylic / Blur Layer
+--========================================================--
+
+local function CreateBlurHandle()
+    local blur = Instance.new("BlurEffect")
+    blur.Size = 12
+    blur.Enabled = false
+    blur.Parent = Lighting
+    return blur
+end
+
+--========================================================--
+--                    Settings System
+--========================================================--
+
+-- Simple in-memory settings (you can wire this into DataStore)
+local function CreateSettingsHandle()
+    local data = {}
+
+    local handle = {}
+
+    function handle:Set(path, value)
+        data[path] = value
+    end
+
+    function handle:Get(path, default)
+        local v = data[path]
+        if v == nil then return default end
+        return v
+    end
+
+    function handle:GetAll()
+        return DeepCopy(data)
+    end
+
+    function handle:Load(tbl)
+        if type(tbl) == "table" then
+            data = DeepCopy(tbl)
+        end
+    end
+
+    return handle
+end
+
+--========================================================--
 --                  Window Creation
 --========================================================--
 
@@ -164,22 +254,40 @@ function Fluent:CreateWindow(opts)
 
     local self = setmetatable({}, Window)
 
-    self.Title     = opts.Title or "Mask UI"
-    self.Size      = opts.Size or UDim2.fromOffset(720, 430)
-    self.ToggleKey = opts.ToggleKey or Enum.KeyCode.RightShift
-    self.MinHeight = 44
+    self.Title       = opts.Title or "Mask UI"
+    self.Size        = opts.Size or UDim2.fromOffset(720, 430)
+    self.ToggleKey   = opts.ToggleKey or Enum.KeyCode.RightShift
+    self.MinHeight   = 44
+    self.Collapsed   = false
+    self.Tabs        = {}
+    self.Sections    = {}
+    self.ActiveTab   = nil
+    self.Settings    = CreateSettingsHandle()
+    self.ThemeName   = (opts.Theme and opts.Theme.Name) or "Dark"
+
+    if opts.ThemePreset and ThemePresets[opts.ThemePreset] then
+        ApplyThemePreset(opts.ThemePreset)
+        self.ThemeName = opts.ThemePreset
+    else
+        ApplyThemePreset("Dark")
+    end
 
     local gui = Create("ScreenGui", {
         Name           = "MaskUI",
         ResetOnSpawn   = false,
         ZIndexBehavior = Enum.ZIndexBehavior.Global,
-        DisplayOrder   = 999999, -- super high priority
+        DisplayOrder   = 999999,
         Parent         = CoreGui
     })
 
     self.Gui = gui
     self.NotificationHolder = CreateNotificationRoot(gui)
 
+    -- Blur handle
+    local blurHandle = CreateBlurHandle()
+    self.BlurHandle = blurHandle
+
+    -- Root window (glass-ish)
     local window = Create("Frame", {
         Name             = "Window",
         Parent           = gui,
@@ -187,48 +295,50 @@ function Fluent:CreateWindow(opts)
         Position         = UDim2.fromScale(0.5, 0.5),
         AnchorPoint      = Vector2.new(0.5, 0.5),
         BackgroundColor3 = Theme.Background,
+        BackgroundTransparency = 0.1,
         ClipsDescendants = false
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
         Create("UIStroke", {
             Color        = Theme.Stroke,
             Thickness    = 1,
-            Transparency = 0.2
+            Transparency = 0.15
         })
     })
     self.Root = window
 
-    -- Sidebar (transparent; only buttons/labels visible)
-    local sidebar = Create("Frame", {
-        Name                   = "Sidebar",
-        Parent                 = window,
-        Size                   = UDim2.new(0, 190, 1, 0),
-        Position               = UDim2.new(0, 0, 0, 0),
-        BackgroundTransparency = 1,
-        BorderSizePixel        = 0
+    -- Subtle acrylic gradient overlay
+    Create("UIGradient", {
+        Parent = window,
+        Color  = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(210, 210, 255))
+        }),
+        Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.90),
+            NumberSequenceKeypoint.new(0.5, 0.95),
+            NumberSequenceKeypoint.new(1, 0.98)
+        }),
+        Rotation = 90
     })
 
-    local sidebarInner = Create("Frame", {
-        Parent                 = sidebar,
-        BackgroundTransparency = 1,
-        BorderSizePixel        = 0,
-        Size                   = UDim2.new(1, 0, 1, 0),
-        Position               = UDim2.new(0, 0, 0, 0)
-    })
+    --====================================================--
+    --                       Topbar
+    --====================================================--
 
-    local sidebarScroll = Create("ScrollingFrame", {
-        Parent                 = sidebarInner,
-        Size                   = UDim2.new(1, 0, 1, -20),
-        Position               = UDim2.new(0, 0, 0, 10),
-        BackgroundTransparency = 1,
-        CanvasSize             = UDim2.fromScale(0, 0),
-        ScrollBarThickness     = 2,
-        ScrollBarImageColor3   = Color3.fromRGB(80, 80, 100),
-        BorderSizePixel        = 0
+    local topbar = Create("Frame", {
+        Name             = "Topbar",
+        Parent           = window,
+        Size             = UDim2.new(1, 0, 0, 32),
+        Position         = UDim2.new(0, 0, 0, 0),
+        BackgroundColor3 = Theme.Topbar,
+        BackgroundTransparency = 0.15,
+        BorderSizePixel  = 0
     }, {
-        Create("UIListLayout", {
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            Padding   = UDim.new(0, 4)
+        Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
+        Create("UIStroke", {
+            Color        = Theme.StrokeSoft,
+            Transparency = 0.4
         }),
         Create("UIPadding", {
             PaddingLeft  = UDim.new(0, 10),
@@ -236,20 +346,143 @@ function Fluent:CreateWindow(opts)
         })
     })
 
-    sidebarScroll.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        sidebarScroll.CanvasSize = UDim2.new(0, 0, 0, sidebarScroll.UIListLayout.AbsoluteContentSize.Y + 10)
-    end)
+    -- Mask title
+    local titleLabel = Create("TextLabel", {
+        Parent                 = topbar,
+        BackgroundTransparency = 1,
+        Size                   = UDim2.new(1, -80, 1, 0),
+        Position               = UDim2.new(0, 0, 0, 0),
+        Font                   = Enum.Font.GothamSemibold,
+        TextSize               = 14,
+        TextColor3             = Theme.Text,
+        TextXAlignment         = Enum.TextXAlignment.Left,
+        Text                   = self.Title
+    })
+
+    -- Subtle credit
+    local creditLabel = Create("TextLabel", {
+        Parent                 = topbar,
+        BackgroundTransparency = 1,
+        Size                   = UDim2.new(0, 80, 1, 0),
+        Position               = UDim2.new(1, -80, 0, 0),
+        Font                   = Enum.Font.Gotham,
+        TextSize               = 12,
+        TextColor3             = Theme.SubText,
+        TextXAlignment         = Enum.TextXAlignment.Right,
+        Text                   = "MaskUI"
+    })
+
+    -- Background under content (so topbar corner looks correct)
+    local topbarMask = Create("Frame", {
+        Parent                 = window,
+        Size                   = UDim2.new(1, 0, 0, 16),
+        Position               = UDim2.new(0, 0, 0, 32),
+        BackgroundColor3       = Theme.Background,
+        BackgroundTransparency = 0.1,
+        BorderSizePixel        = 0
+    })
+
+    --====================================================--
+    --                      Sidebar
+    --====================================================--
+
+    local sidebarWidth = 190
+
+    local sidebar = Create("Frame", {
+        Name                   = "Sidebar",
+        Parent                 = window,
+        Size                   = UDim2.new(0, sidebarWidth, 1, -32),
+        Position               = UDim2.new(0, 0, 0, 32),
+        BackgroundColor3       = Theme.SidebarTint,
+        BackgroundTransparency = 0.15,
+        BorderSizePixel        = 0
+    }, {
+        Create("UICorner", { CornerRadius = UDim.new(0, 8) }),
+        Create("UIStroke", {
+            Color        = Theme.StrokeSoft,
+            Transparency = 0.5
+        })
+    })
+
+    local sidebarInner = Create("Frame", {
+        Parent                 = sidebar,
+        BackgroundTransparency = 1,
+        BorderSizePixel        = 0,
+        Size                   = UDim2.new(1, 0, 1, -36),
+        Position               = UDim2.new(0, 0, 0, 36)
+    })
+
+    -- Sidebar search bar
+    local searchFrame = Create("Frame", {
+        Parent           = sidebar,
+        Size             = UDim2.new(1, -16, 0, 24),
+        Position         = UDim2.new(0, 8, 0, 8),
+        BackgroundColor3 = Theme.SearchBar,
+        BackgroundTransparency = 0.2,
+        BorderSizePixel  = 0
+    }, {
+        Create("UICorner", { CornerRadius = UDim.new(0, 6) }),
+        Create("UIStroke", {
+            Color        = Theme.StrokeSoft,
+            Transparency = 0.65
+        }),
+        Create("UIPadding", {
+            PaddingLeft  = UDim.new(0, 6),
+            PaddingRight = UDim.new(0, 6)
+        })
+    })
+
+    local searchBox = Create("TextBox", {
+        Parent                 = searchFrame,
+        BackgroundTransparency = 1,
+        Size                   = UDim2.new(1, 0, 1, 0),
+        Position               = UDim2.new(0, 0, 0, 0),
+        Font                   = Enum.Font.Gotham,
+        TextSize               = 12,
+        TextColor3             = Theme.Text,
+        PlaceholderText        = "Search tabs...",
+        PlaceholderColor3      = Theme.SubText,
+        Text                   = "",
+        TextXAlignment         = Enum.TextXAlignment.Left,
+        ClearTextOnFocus       = false
+    })
+
+    local sidebarScroll = Create("ScrollingFrame", {
+        Parent                 = sidebarInner,
+        Size                   = UDim2.new(1, 0, 1, 0),
+        Position               = UDim2.new(0, 0, 0, 0),
+        BackgroundTransparency = 1,
+        CanvasSize             = UDim2.fromScale(0, 0),
+        ScrollBarThickness     = 2,
+        ScrollBarImageColor3   = Color3.fromRGB(80, 80, 100),
+        BorderSizePixel        = 0,
+        AutomaticCanvasSize    = Enum.AutomaticSize.Y
+    }, {
+        Create("UIListLayout", {
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Padding   = UDim.new(0, 4)
+        }),
+        Create("UIPadding", {
+            PaddingLeft  = UDim.new(0, 10),
+            PaddingRight = UDim.new(0, 10),
+            PaddingTop   = UDim.new(0, 4)
+        })
+    })
 
     self.SidebarScroll = sidebarScroll
+    self.SearchBox     = searchBox
 
-    -- Content holder (tab frame)
+    --====================================================--
+    --                Content / Tab Holder
+    --====================================================--
+
     local contentHolder = Create("Frame", {
         Name                   = "ContentHolder",
         Parent                 = window,
-        Size                   = UDim2.new(1, -190, 1, 0),
-        Position               = UDim2.new(0, 190, 0, 0),
+        Size                   = UDim2.new(1, -sidebarWidth, 1, -32),
+        Position               = UDim2.new(0, sidebarWidth, 0, 32),
         BackgroundColor3       = Theme.ElementAlt,
-        BackgroundTransparency = 0.05,
+        BackgroundTransparency = 0.5, -- glass-like
         BorderSizePixel        = 0,
         ClipsDescendants       = true
     }, {
@@ -263,20 +496,16 @@ function Fluent:CreateWindow(opts)
     local contentInner = Create("Frame", {
         Parent                 = contentHolder,
         BackgroundColor3       = Theme.ElementAlt,
-        BackgroundTransparency = 0.05,
+        BackgroundTransparency = 0.5,
         BorderSizePixel        = 0,
         Size                   = UDim2.new(1, 0, 1, 0),
         Position               = UDim2.new(0, 0, 0, 0)
     })
 
     self.ContentHolder = contentInner
-    self.Sections      = {}
-    self.Tabs          = {}
-    self.ActiveTab     = nil
-    self.Minimized     = false
 
     --====================================================--
-    --           Dragging ONLY from sidebar area
+    --           Dragging (Topbar + Sidebar only)
     --====================================================--
 
     local dragging      = false
@@ -304,11 +533,16 @@ function Fluent:CreateWindow(opts)
         startPosition = nil
     end
 
-    sidebarInner.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            beginDrag(input)
-        end
-    end)
+    local function connectDrag(obj)
+        obj.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                beginDrag(input)
+            end
+        end)
+    end
+
+    connectDrag(topbar)
+    connectDrag(sidebarInner)
 
     UIS.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement then
@@ -323,14 +557,64 @@ function Fluent:CreateWindow(opts)
     end)
 
     --====================================================--
+    --              Sidebar Collapse / Expand
+    --====================================================--
+
+    local collapseButton = Create("TextButton", {
+        Parent                 = topbar,
+        BackgroundTransparency = 1,
+        Size                   = UDim2.new(0, 24, 1, 0),
+        Position               = UDim2.new(1, -24, 0, 0),
+        Font                   = Enum.Font.GothamBold,
+        TextSize               = 18,
+        TextColor3             = Theme.SubText,
+        Text                   = "≡",
+        AutoButtonColor        = false
+    })
+
+    local collapsedWidth = 0
+
+    local function setCollapsed(v)
+        self.Collapsed = v
+
+        local targetSidebarWidth = v and collapsedWidth or sidebarWidth
+
+        Tween(sidebar, {
+            Size = UDim2.new(0, targetSidebarWidth, 1, -32)
+        }, 0.18)
+        Tween(contentHolder, {
+            Size     = UDim2.new(1, -targetSidebarWidth, 1, -32),
+            Position = UDim2.new(0, targetSidebarWidth, 0, 32)
+        }, 0.18)
+
+        if v then
+            Tween(sidebarInner, { BackgroundTransparency = 1 }, 0.18)
+            Tween(searchFrame, { BackgroundTransparency = 1 }, 0.18)
+            Tween(searchBox, { TextTransparency = 1, PlaceholderColor3 = Theme.Topbar }, 0.18)
+        else
+            Tween(sidebarInner, { BackgroundTransparency = 1 }, 0.18)
+            Tween(searchFrame, { BackgroundTransparency = 0.2 }, 0.18)
+            Tween(searchBox, {
+                TextTransparency = 0,
+                PlaceholderColor3 = Theme.SubText
+            }, 0.18)
+        end
+    end
+
+    collapseButton.MouseButton1Click:Connect(function()
+        setCollapsed(not self.Collapsed)
+    end)
+
+    --====================================================--
     --                  UI Toggle (global)
     --====================================================--
 
     local visible = true
 
     local function setVisible(v)
-        visible     = v
-        gui.Enabled = v
+        visible          = v
+        gui.Enabled      = v
+        blurHandle.Enabled = v
     end
 
     UIS.InputBegan:Connect(function(input, gp)
@@ -344,9 +628,50 @@ function Fluent:CreateWindow(opts)
         self.ToggleKey = keycode
     end
 
+    function self:SetThemePreset(presetName)
+        if not ThemePresets[presetName] then return end
+        self.ThemeName = presetName
+        ApplyThemePreset(presetName)
+        -- Note: full live theme rebind would require walking all instances.
+        -- For now we keep this as a "next window" configuration entry point.
+    end
+
     function self:Notify(info)
         CreateNotification(self.NotificationHolder, info)
     end
+
+    function self:GetSettings()
+        return self.Settings:GetAll()
+    end
+
+    function self:LoadSettings(tbl)
+        self.Settings:Load(tbl)
+    end
+
+    --====================================================--
+    --               Search -> filter sidebar tabs
+    --====================================================--
+
+    self._AllSidebarButtons = {}
+
+    local function refreshSearch()
+        local query = string.lower(searchBox.Text or "")
+        for _, info in ipairs(self._AllSidebarButtons) do
+            local match = (query == "") or string.find(string.lower(info.Name), query, 1, true)
+            info.Button.Visible = match
+        end
+    end
+
+    searchBox:GetPropertyChangedSignal("Text"):Connect(refreshSearch)
+
+    --====================================================--
+    --                  Public refs
+    --====================================================--
+
+    self.Topbar        = topbar
+    self.TitleLabel    = titleLabel
+    self.Sidebar       = sidebar
+    self.ContentOuter  = contentHolder
 
     return self
 end
@@ -407,6 +732,7 @@ function Window:CreateTab(tabName, sectionName)
         Create("UICorner", { CornerRadius = UDim.new(0, 4) }),
         Create("UIStroke", { Color = Theme.StrokeSoft, Transparency = 0.6 }),
         Create("TextLabel", {
+            Name                   = "Label",
             BackgroundTransparency = 1,
             Size                   = UDim2.fromScale(1, 1),
             Text                   = tabName,
@@ -421,35 +747,43 @@ function Window:CreateTab(tabName, sectionName)
         Parent                 = self.ContentHolder,
         Size                   = UDim2.fromScale(1, 1),
         BackgroundTransparency = 1,
-        Visible                = false
+        Visible                = false,
+        ClipsDescendants       = true
     }, {
         Create("UIListLayout", {
             SortOrder = Enum.SortOrder.LayoutOrder,
             Padding   = UDim.new(0, 8)
         }),
         Create("UIPadding", {
-            PaddingTop    = UDim.new(0, 12),
+            PaddingTop    = UDim.new(0, 40),
             PaddingLeft   = UDim.new(0, 12),
             PaddingRight  = UDim.new(0, 12),
             PaddingBottom = UDim.new(0, 12)
         })
     })
 
-    -- Centered title at top of tab frame
+    -- Centered title at top of tab
     local titleLabel = Create("TextLabel", {
         Parent                 = page,
         BackgroundTransparency = 1,
-        Size                   = UDim2.new(1, 0, 0, 28),
+        Size                   = UDim2.new(1, 0, 0, 32),
         Text                   = tabName,
-        Font                   = Enum.Font.GothamSemibold,
-        TextSize               = 17,
+        Font                   = Enum.Font.GothamBold,
+        TextSize               = 18,
         TextColor3             = Theme.Text,
         TextXAlignment         = Enum.TextXAlignment.Center,
-        TextYAlignment         = Enum.TextYAlignment.Top
+        TextYAlignment         = Enum.TextYAlignment.Center
     })
 
-    -- Push elements down a bit below the title
-    page.UIPadding.PaddingTop = UDim.new(0, 36)
+    -- Divider line under title
+    Create("Frame", {
+        Parent                 = page,
+        BackgroundColor3       = Theme.StrokeSoft,
+        BackgroundTransparency = 0.7,
+        Size                   = UDim2.new(1, -24, 0, 1),
+        Position               = UDim2.new(0, 12, 0, 32),
+        BorderSizePixel        = 0
+    })
 
     local tab = setmetatable({
         Window  = self,
@@ -463,16 +797,55 @@ function Window:CreateTab(tabName, sectionName)
     table.insert(section.Tabs, tab)
     self.Tabs[tabName] = tab
 
+    table.insert(self._AllSidebarButtons, {
+        Name   = tabName,
+        Button = tabButton
+    })
+
     local function setActive()
-        if self.ActiveTab then
-            self.ActiveTab.Page.Visible = false
-            Tween(self.ActiveTab.Button, {
+        if self.ActiveTab == tab then
+            return
+        end
+
+        local previous = self.ActiveTab
+        self.ActiveTab = tab
+
+        -- old tab fade out
+        if previous then
+            Tween(previous.Button, {
                 BackgroundColor3       = Theme.SidebarTint,
                 BackgroundTransparency = 0.4
             }, 0.12)
+
+            Tween(previous.Page, {
+                BackgroundTransparency = 1
+            }, 0.12)
+
+            task.delay(0.12, function()
+                if previous.Page then
+                    previous.Page.Visible = false
+                end
+            end)
         end
-        self.ActiveTab = tab
-        page.Visible   = true
+
+        -- new tab fade / slide in
+        page.Visible = true
+        page.BackgroundTransparency = 1
+
+        for _, child in ipairs(page:GetChildren()) do
+            if child:IsA("GuiObject") then
+                child.Position = UDim2.new(child.Position.X.Scale, child.Position.X.Offset, child.Position.Y.Scale, child.Position.Y.Offset + 10)
+                child.BackgroundTransparency = child.BackgroundTransparency
+                Tween(child, {
+                    Position = UDim2.new(child.Position.X.Scale, child.Position.X.Offset, child.Position.Y.Scale, child.Position.Y.Offset - 10)
+                }, 0.16)
+            end
+        end
+
+        Tween(page, {
+            BackgroundTransparency = 1
+        }, 0.12)
+
         Tween(tabButton, {
             BackgroundColor3       = Theme.Element,
             BackgroundTransparency = 0
@@ -506,6 +879,46 @@ function Window:CreateTab(tabName, sectionName)
     end
 
     return tab
+end
+
+--========================================================--
+--                   Shared: Ripple Effect
+--========================================================--
+
+local function AttachRipple(button)
+    button.AutoButtonColor = false
+
+    button.MouseButton1Click:Connect(function(x, y)
+        local absPos = button.AbsolutePosition
+        local relX   = (x or UIS:GetMouseLocation().X) - absPos.X
+        local relY   = (y or UIS:GetMouseLocation().Y) - absPos.Y
+
+        local ripple = Create("Frame", {
+            Parent                 = button,
+            BackgroundColor3       = Theme.Accent,
+            BackgroundTransparency = 0.5,
+            BorderSizePixel        = 0,
+            Size                   = UDim2.fromOffset(0, 0),
+            Position               = UDim2.fromOffset(relX, relY),
+            AnchorPoint            = Vector2.new(0.5, 0.5),
+            ZIndex                 = (button.ZIndex or 1) + 1
+        }, {
+            Create("UICorner", { CornerRadius = UDim.new(1, 0) })
+        })
+
+        local maxSize = math.max(button.AbsoluteSize.X, button.AbsoluteSize.Y) * 2
+
+        Tween(ripple, {
+            Size                   = UDim2.fromOffset(maxSize, maxSize),
+            BackgroundTransparency = 1
+        }, 0.4)
+
+        task.delay(0.45, function()
+            if ripple and ripple.Parent then
+                ripple:Destroy()
+            end
+        end)
+    end)
 end
 
 --========================================================--
@@ -550,6 +963,8 @@ function Tab:AddButton(options)
     btn.MouseButton1Up:Connect(function()
         Tween(btn, { BackgroundColor3 = Theme.ElementAlt }, 0.1)
     end)
+
+    AttachRipple(btn)
 
     btn.MouseButton1Click:Connect(function()
         if callback then
@@ -775,7 +1190,6 @@ function Tab:AddInput(options)
         Text                   = labelText
     })
 
-    -- Right aligned input box with subtle outline
     local box = Create("TextBox", {
         Parent                 = frame,
         Size                   = UDim2.new(0.6, -14, 0, 24),
@@ -789,7 +1203,8 @@ function Tab:AddInput(options)
         PlaceholderColor3      = Theme.SubText,
         PlaceholderText        = placeholder,
         Text                   = default,
-        BorderSizePixel        = 0
+        BorderSizePixel        = 0,
+        ClearTextOnFocus       = false
     }, {
         Create("UICorner", { CornerRadius = UDim.new(0, 4) }),
         Create("UIStroke", {
@@ -887,6 +1302,12 @@ function Tab:AddDropdown(options)
         Create("UIListLayout", {
             SortOrder = Enum.SortOrder.LayoutOrder,
             Padding   = UDim.new(0, 2)
+        }),
+        Create("UIPadding", {
+            PaddingTop    = UDim.new(0, 2),
+            PaddingBottom = UDim.new(0, 2),
+            PaddingLeft   = UDim.new(0, 2),
+            PaddingRight  = UDim.new(0, 2)
         })
     })
 
@@ -1025,7 +1446,7 @@ function Tab:AddKeybind(options)
     })
 
     button.MouseButton1Click:Connect(function()
-        listening  = true
+        listening   = true
         button.Text = "Press a key..."
     end)
 
@@ -1068,6 +1489,21 @@ local MaskUI = {}
 
 function MaskUI:CreateWindow(opts)
     return Fluent:CreateWindow(opts)
+end
+
+function MaskUI:SetThemePreset(presetName)
+    if ThemePresets[presetName] then
+        ApplyThemePreset(presetName)
+    end
+end
+
+function MaskUI:GetThemePresets()
+    local names = {}
+    for name in pairs(ThemePresets) do
+        table.insert(names, name)
+    end
+    table.sort(names)
+    return names
 end
 
 return MaskUI
